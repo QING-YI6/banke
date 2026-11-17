@@ -9,7 +9,7 @@ import { fleshTexture, glowTexture, skinTexture } from './textures'
 import { makeCapGeometry, makeSkinGeometry } from './geometry'
 import { PALETTE } from './palette'
 import { sceneBridge, waterFx, type SplashSpec } from './bridge'
-import { PoolFloor, Water } from './Water'
+import { Water } from './Water'
 import { Splash } from './Splash'
 import { StemModel } from './StemModel'
 
@@ -195,7 +195,7 @@ function SceneContent({
   const stemRef = useRef<THREE.Group>(null!)
   const stemAnchor = useRef<THREE.Object3D>(null)
   const shadowRefs = useRef<(THREE.Mesh | null)[]>([])
-  const reflectionRef = useRef<THREE.Mesh>(null)
+  const reflectionRefs = useRef<(THREE.Mesh | null)[]>([])
   const ringRef = useRef<THREE.Mesh>(null)
   const lineA = useRef<THREE.Mesh>(null)
   const lineB = useRef<THREE.Mesh>(null)
@@ -500,14 +500,15 @@ function SceneContent({
         shadow.scale.set(ss, ss, ss)
         ;(shadow.material as THREE.MeshBasicMaterial).opacity = 0.11 * raw
       }
-    }
 
-    if (reflectionRef.current) {
-      const sel = layout[selected]
-      const m = reflectionRef.current.material as THREE.MeshBasicMaterial
-      reflectionRef.current.position.set(sel.p.x * raw, 0.014, 0.2 + sel.p.z * raw * 0.55)
-      reflectionRef.current.scale.set(1.15, 2.1, 1)
-      m.opacity = 0.09 * raw
+      const reflection = reflectionRefs.current[i]
+      if (reflection) {
+        const rs = item.scale / 0.7
+        reflection.position.set(item.p.x * motion, 0.014, item.p.z * motion + 0.16)
+        reflection.scale.set(1.25 * rs, 2.3 * rs, 1)
+        ;(reflection.material as THREE.MeshBasicMaterial).opacity =
+          (i === selected ? 0.3 : 0.14) * raw
+      }
     }
 
     const fr = skipIntro ? 1 : clamp((e - 2.72) / 1.1, 0, 1)
@@ -552,7 +553,6 @@ function SceneContent({
       <pointLight position={[0, 2.6, 3.2]} intensity={1.2} distance={9} decay={2} color="#ffe5cc" />
 
       <SkyDome />
-      <PoolFloor />
       <Water intensity={waterIntensity} />
       <Motes />
       <CameraRig camMixRef={camMixRef} entering={entering} />
@@ -610,10 +610,20 @@ function SceneContent({
         <meshBasicMaterial map={glowTex} color="#7fa5b4" transparent opacity={0.16} depthWrite={false} />
       </mesh>
 
-      <mesh ref={reflectionRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.014, 0.2]}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={glowTex} color="#c4634d" transparent opacity={0} depthWrite={false} />
-      </mesh>
+      {layout.map((item, i) => (
+        <mesh
+          key={`reflection-${i}`}
+          ref={(el) => {
+            reflectionRefs.current[i] = el
+          }}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[item.p.x, 0.014, item.p.z + 0.16]}
+          renderOrder={1}
+        >
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial map={glowTex} color="#b04a38" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
 
       <group
         ref={stemRef}

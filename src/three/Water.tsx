@@ -100,7 +100,7 @@ void main() {
   float ripple = smoothstep(0.52, 0.92, fbm(p * 4.6 + vec2(t * 0.16, -t * 0.12)));
   col -= vec3(0.045, 0.07, 0.075) * ripple * uIntensity;
   float fine = smoothstep(0.78, 0.98, fbm(p * 8.0 - vec2(t * 0.2, t * 0.15)));
-  col += uSun * fine * 0.16 * uIntensity;
+  col += uSun * fine * 0.22 * uIntensity;
 
   float dist = length(vWorld.xz - cameraPosition.xz);
   float fog = smoothstep(7.0, 34.0, dist);
@@ -146,7 +146,7 @@ export function Water({ intensity }: { intensity: number }) {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} frustumCulled={false} renderOrder={2}>
-      <planeGeometry args={[140, 140, 1, 1]} />
+      <planeGeometry args={[160, 160, 1, 1]} />
       <shaderMaterial
         vertexShader={VERT}
         fragmentShader={FRAG}
