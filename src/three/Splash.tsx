@@ -99,7 +99,7 @@ export function Splash({
         uniforms={uniforms}
         transparent
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        blending={THREE.NormalBlending}
         toneMapped={false}
       />
     </points>

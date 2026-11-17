@@ -4,8 +4,8 @@ import * as THREE from 'three'
 /** 带五片萼片和一根弯柄的番茄蒂，全部程序化建模。 */
 export function StemModel() {
   const leafGeometry = useMemo(() => {
-    const len = 0.62
-    const w = 0.19
+    const len = 0.4
+    const w = 0.13
     const shape = new THREE.Shape()
     shape.moveTo(0, 0)
     shape.bezierCurveTo(w, len * 0.18, w * 0.82, len * 0.62, 0, len)
@@ -25,12 +25,12 @@ export function StemModel() {
 
   const stalkGeometry = useMemo(() => {
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, -0.02, 0),
-      new THREE.Vector3(0.02, 0.14, 0.035),
-      new THREE.Vector3(0.055, 0.3, 0.01),
-      new THREE.Vector3(0.0, 0.46, 0.05),
+      new THREE.Vector3(0, -0.015, 0),
+      new THREE.Vector3(0.03, 0.18, 0.12),
+      new THREE.Vector3(0.09, 0.42, 0.34),
+      new THREE.Vector3(0.05, 0.7, 0.64),
     ])
-    return new THREE.TubeGeometry(curve, 26, 0.038, 9, false)
+    return new THREE.TubeGeometry(curve, 32, 0.045, 9, false)
   }, [])
 
   const leafMaterial = useMemo(
@@ -69,19 +69,19 @@ export function StemModel() {
             <mesh
               geometry={leafGeometry}
               material={leafMaterial}
-              rotation={[Math.PI / 2 + 0.18 + (i % 2) * 0.06, 0, 0]}
-              position={[0, 0.025, 0.012]}
+              rotation={[Math.PI / 2 + 0.1 + (i % 2) * 0.05, 0, 0]}
+              position={[0, 0.03, 0.012]}
             />
           </group>
         )
       })}
       <mesh geometry={stalkGeometry} material={stalkMaterial} />
-      <mesh position={[0, 0.015, 0]}>
-        <sphereGeometry args={[0.075, 12, 10]} />
+      <mesh position={[0, 0.02, 0]}>
+        <sphereGeometry args={[0.065, 12, 10]} />
         <meshStandardMaterial color="#67783f" roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.465, 0.05]}>
-        <cylinderGeometry args={[0.038, 0.034, 0.012, 10]} />
+      <mesh position={[0.05, 0.715, 0.64]} rotation={[0.35, 0, -0.12]}>
+        <cylinderGeometry args={[0.045, 0.038, 0.012, 10]} />
         <meshStandardMaterial color="#a9b477" roughness={0.7} />
       </mesh>
     </group>

@@ -47,14 +47,20 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
       return false
     }
   })
-  const [phase, setPhase] = useState<ScenePhase>(initialSettled || !webgl ? 'settled' : 'idle')
-  const [skip, setSkip] = useState(initialSettled || !webgl)
+  const forceSkip =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('skipIntro')
+  const [phase, setPhase] = useState<ScenePhase>(
+    initialSettled || !webgl || forceSkip ? 'settled' : 'idle',
+  )
+  const [skip, setSkip] = useState(initialSettled || !webgl || forceSkip)
   const [leaving, setLeaving] = useState<Quadrant | null>(null)
+  const [selected, setSelected] = useState(0)
   const labelsRef = useRef<HTMLDivElement>(null)
-  const settledOnce = useRef(initialSettled || !webgl)
+  const settledOnce = useRef(initialSettled || !webgl || forceSkip)
 
   const coarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
-  const labelOffset = typeof window !== 'undefined' && window.innerWidth < 760 ? 104 : 136
+  const activeQ = QUADRANTS[selected]
+  const activeInfo = QUADRANT_INFO[activeQ]
 
   useEffect(() => {
     if (phase === 'settled' && !settledOnce.current) {
@@ -98,6 +104,29 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
     window.setTimeout(() => onEnter(q), 560)
   }
 
+  const cycle = (dir: number) => {
+    if (phase !== 'settled' || leaving) return
+    setSelected((s) => (s + dir + 4) % 4)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (phase !== 'settled' || leaving) return
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        cycle(1)
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        cycle(-1)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        enter(activeQ)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   const skipIntro = () => {
     setSkip(true)
     setPhase('settled')
@@ -111,10 +140,10 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           className="stage__canvas"
           dpr={[1, coarse ? 1.4 : 1.8]}
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-          camera={{ fov: 38, near: 0.1, far: 140, position: [0, 2.8, 6.8] }}
+          camera={{ fov: 38, near: 0.1, far: 160, position: [0, 7, 4] }}
           onCreated={({ gl }) => {
             gl.toneMapping = THREE.ACESFilmicToneMapping
-            gl.toneMappingExposure = 0.86
+            gl.toneMappingExposure = 1.0
             gl.outputColorSpace = THREE.SRGBColorSpace
           }}
         >
@@ -122,6 +151,8 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
             skipIntro={skip}
             entering={leaving}
             waterIntensity={settings.water}
+            selected={selected}
+            onSelected={setSelected}
             onSelect={enter}
             onOpenStem={onOpenStem}
             onPhase={setPhase}
@@ -153,6 +184,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
         </div>
       )}
 
+      <div className="stage__sky" />
       <div className="stage__vignette" />
 
       <header className="brand">
@@ -177,37 +209,48 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
       </div>
 
       {webgl && (
-      <div ref={labelsRef} className={`slice-labels${phase === 'settled' ? ' is-live' : ''}`}>
-        {QUADRANTS.map((q, i) => {
-          const info = QUADRANT_INFO[q]
-          return (
-            <button
-              key={q}
-              className="slice-label"
-              data-anchor={q}
-              data-offset={i < 2 ? -labelOffset : labelOffset}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => enter(q)}
-              style={{ '--accent': info.accent } as CSSProperties}
-            >
-              <span className="slice-label__num">{info.numeral}</span>
-              <span className="slice-label__name">{info.name}</span>
-              <span className="slice-label__en">{info.en}</span>
-            </button>
-          )
-        })}
-        <button
-          className="stem-label"
-          data-anchor="stem"
-          data-offset={coarse ? 34 : 10}
-          data-x={coarse ? -66 : -118}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onOpenStem}
-        >
-          <span className="stem-label__mark">柄</span>
-          <span className="stem-label__text">记录 · 设置</span>
-        </button>
-      </div>
+        <div ref={labelsRef} className={`slice-labels${phase === 'settled' ? ' is-live' : ''}`}>
+          <button
+            key={activeQ}
+            className="slice-label is-active"
+            data-anchor={activeQ}
+            data-offset={coarse ? -100 : -132}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => enter(activeQ)}
+            style={{ '--accent': activeInfo.accent } as CSSProperties}
+          >
+            <span className="slice-label__num">{activeInfo.numeral}</span>
+            <span className="slice-label__name">{activeInfo.name}</span>
+            <span className="slice-label__en">{activeInfo.en}</span>
+            <span className="slice-label__go">进入</span>
+          </button>
+
+          <button
+            className="stem-label"
+            data-anchor="stem"
+            data-offset={coarse ? -34 : -42}
+            data-x={coarse ? -62 : -104}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onOpenStem}
+          >
+            <span className="stem-label__mark">柄</span>
+            <span className="stem-label__text">记录 · 设置</span>
+          </button>
+        </div>
+      )}
+
+      {webgl && phase === 'settled' && !leaving && !(active && active.phase !== 'done') && (
+        <div className="carousel-nav" aria-label="切换这一瓣">
+          <button onClick={() => cycle(-1)} aria-label="上一瓣">
+            ‹
+          </button>
+          <span>
+            <em>{activeInfo.numeral}</em> / 04
+          </span>
+          <button onClick={() => cycle(1)} aria-label="下一瓣">
+            ›
+          </button>
+        </div>
       )}
 
       <div className="stage__bottom">
@@ -215,9 +258,9 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           <p className="stage__hint">
             {webgl ? (
               <>
-                <span>拖动水面，转一转视角</span>
+                <span>左右拖动 · 换一瓣</span>
                 <span className="stage__hint-dot" />
-                <span>点一瓣，落下这一刻</span>
+                <span>点名字 · 进去</span>
               </>
             ) : (
               <span>选一瓣，落下这一刻</span>

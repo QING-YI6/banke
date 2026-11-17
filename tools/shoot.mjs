@@ -55,6 +55,12 @@ await page.waitForSelector('.slice-labels.is-live', { timeout: 10000 })
 await sleep(1400)
 await page.screenshot({ path: path.join(shots, '01-stage.png') })
 
+await page.keyboard.press('ArrowRight')
+await sleep(1200)
+await page.screenshot({ path: path.join(shots, '01b-stage-work.png') })
+await page.keyboard.press('ArrowLeft')
+await sleep(900)
+
 async function clickByText(selector, text) {
   const ok = await page.evaluate(
     (sel, t) => {
@@ -167,12 +173,9 @@ await page.close()
 const mobile = await browser.newPage()
 mobile.on('pageerror', (err) => errors.push(`mobile pageerror: ${err.message}`))
 await mobile.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
-await mobile.goto(fileUrl, { waitUntil: 'load' })
-await mobile.waitForSelector('.stage[data-phase="opening"]', { timeout: 25000 })
-await sleep(450)
-await mobile.screenshot({ path: path.join(shots, '11b-mobile-cut.png') })
-await mobile.waitForSelector('.stage[data-phase="settled"]', { timeout: 30000 })
-await sleep(1400)
+await mobile.goto(`${fileUrl}?skipIntro=1`, { waitUntil: 'load' })
+await mobile.waitForSelector('.slice-labels.is-live', { timeout: 20000 })
+await sleep(1500)
 await mobile.screenshot({ path: path.join(shots, '12-mobile-stage.png') })
 
 const clickMobile = async (selector, text) => {
@@ -189,7 +192,7 @@ const clickMobile = async (selector, text) => {
   if (!ok) throw new Error(`mobile: can't find ${selector} with ${text}`)
 }
 
-await clickMobile('.slice-label', '工作')
+await mobile.click('.slice-label')
 await mobile.waitForSelector('.setup__input', { timeout: 8000 })
 await sleep(500)
 await mobile.screenshot({ path: path.join(shots, '13-mobile-setup.png') })
