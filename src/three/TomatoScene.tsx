@@ -9,7 +9,7 @@ import { fleshTexture, glowTexture, skinTexture } from './textures'
 import { makeCapGeometry, makeSkinGeometry } from './geometry'
 import { PALETTE } from './palette'
 import { sceneBridge, waterFx, type SplashSpec } from './bridge'
-import { Water } from './Water'
+import { PoolFloor, Water } from './Water'
 import { Splash } from './Splash'
 import { StemModel } from './StemModel'
 
@@ -66,9 +66,9 @@ function SkyDome() {
           void main() {
             vec3 d = normalize(vDir);
             float h = d.y;
-            vec3 top = vec3(0.64, 0.81, 0.93);
-            vec3 mid = vec3(0.87, 0.95, 0.99);
-            vec3 horizon = vec3(1.0, 1.0, 1.0);
+            vec3 top = vec3(0.55, 0.69, 0.78);
+            vec3 mid = vec3(0.74, 0.83, 0.87);
+            vec3 horizon = vec3(0.906, 0.933, 0.941);
             vec3 col = mix(horizon, mid, smoothstep(-0.02, 0.16, h));
             col = mix(col, top, smoothstep(0.12, 0.7, h));
             vec3 sunDir = normalize(vec3(-0.4, 0.55, -0.9));
@@ -553,6 +553,7 @@ function SceneContent({
       <pointLight position={[0, 2.6, 3.2]} intensity={1.2} distance={9} decay={2} color="#ffe5cc" />
 
       <SkyDome />
+      <PoolFloor />
       <Water intensity={waterIntensity} />
       <Motes />
       <CameraRig camMixRef={camMixRef} entering={entering} />

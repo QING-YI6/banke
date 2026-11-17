@@ -84,29 +84,44 @@ void main() {
   float fres = pow(1.0 - clamp(dot(n, V), 0.0, 1.0), 2.6);
   vec3 R = reflect(-V, n);
   float up = clamp(R.y, 0.0, 1.0);
-  vec3 sky = mix(uHorizon, vec3(0.84, 0.94, 0.99), smoothstep(0.02, 0.5, up));
+  vec3 sky = mix(uHorizon, vec3(0.74, 0.83, 0.87), smoothstep(0.02, 0.5, up));
 
-  vec3 sunDir = normalize(vec3(-0.4, 0.55, -0.9));
+  vec3 sunDir = normalize(vec3(-0.4, 0.72, -0.9));
   float sundot = max(dot(R, sunDir), 0.0);
-  float glow = pow(sundot, 8.0);
-  float glint = pow(sundot, 220.0);
+  float glow = pow(sundot, 10.0);
+  float glint = pow(sundot, 300.0);
 
-  vec3 col = mix(uDeep, uShallow, 0.42 + 0.16 * h);
-  col = mix(col, sky, 0.26 + 0.62 * fres);
-  col = mix(col, vec3(1.0), pow(fres, 1.4) * 0.35);
-  col += uSun * (glow * 0.14 + glint * 1.2);
+  vec3 col = mix(uDeep, uShallow, 0.38 + 0.18 * h);
+  col = mix(col, sky, 0.28 + 0.6 * fres);
 
-  // 水面细纹：比底色稍深一点点的蓝，再加一层碎光
+  // 银中透亮：把蓝往银灰拉一点，但保留水色
+  float lum = dot(col, vec3(0.299, 0.587, 0.114));
+  col = mix(col, vec3(lum) * vec3(1.03, 1.0, 0.99), 0.22);
+  col += vec3(0.72, 0.8, 0.83) * pow(fres, 2.2) * 0.22;
+
+  col += uSun * (glow * 0.14 + glint * 1.5);
+
+  // 碎银：两层高频亮点，像阳光落在水面的碎片
+  vec2 g1 = fract(p * 26.0 + vec2(t * 0.05, -t * 0.04)) - 0.5;
+  float h1 = hash(floor(p * 26.0) + floor(t * 0.9));
+  float sp1 = smoothstep(0.1, 0.0, length(g1)) * step(0.9, h1);
+  vec2 g2 = fract(p * 61.0 - vec2(t * 0.07, t * 0.05)) - 0.5;
+  float h2 = hash(floor(p * 61.0) - floor(t * 1.4));
+  float sp2 = smoothstep(0.08, 0.0, length(g2)) * step(0.93, h2);
+  float sparkle = (sp1 + sp2) * (0.35 + 0.65 * max(dot(R, sunDir), 0.0));
+  col += vec3(1.0) * sparkle * 1.1 * uIntensity;
+
+  // 细纹：银灰的暗部，让水面有流动感
   float ripple = smoothstep(0.52, 0.92, fbm(p * 4.6 + vec2(t * 0.16, -t * 0.12)));
-  col -= vec3(0.045, 0.07, 0.075) * ripple * uIntensity;
+  col -= vec3(0.05, 0.055, 0.055) * ripple * uIntensity;
   float fine = smoothstep(0.78, 0.98, fbm(p * 8.0 - vec2(t * 0.2, t * 0.15)));
-  col += uSun * fine * 0.22 * uIntensity;
+  col += uSun * fine * 0.18 * uIntensity;
 
   float dist = length(vWorld.xz - cameraPosition.xz);
   float fog = smoothstep(7.0, 34.0, dist);
-  col = mix(col, uHorizon, fog * 0.9);
+  col = mix(col, uHorizon, fog * 0.92);
 
-  float alpha = 0.45 + 0.34 * fres;
+  float alpha = 0.62 + 0.3 * fres;
   gl_FragColor = vec4(col, alpha);
 }
 `
@@ -116,9 +131,9 @@ export function Water({ intensity }: { intensity: number }) {
     () => ({
       uTime: { value: 0 },
       uIntensity: { value: intensity },
-      uDeep: { value: new THREE.Color('#a6cfdf') },
-      uShallow: { value: new THREE.Color('#e5f6fc') },
-      uHorizon: { value: new THREE.Color('#fbfeff') },
+      uDeep: { value: new THREE.Color('#375262') },
+      uShallow: { value: new THREE.Color('#9db3bd') },
+      uHorizon: { value: new THREE.Color('#e7eef0') },
       uSun: { value: new THREE.Color('#ffffff') },
       uImpact: {
         value: [
@@ -146,7 +161,7 @@ export function Water({ intensity }: { intensity: number }) {
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} frustumCulled={false} renderOrder={2}>
-      <planeGeometry args={[160, 160, 1, 1]} />
+      <planeGeometry args={[4000, 4000, 1, 1]} />
       <shaderMaterial
         vertexShader={VERT}
         fragmentShader={FRAG}
@@ -200,11 +215,11 @@ void main() {
   vec2 p = vWorld.xz * 0.9;
   float t = uTime * 0.04;
   float n = fbm(p * 1.7 + vec2(t, -t));
-  vec3 base = mix(vec3(0.79, 0.9, 0.95), vec3(0.93, 0.98, 1.0), smoothstep(-0.2, 0.7, n));
+  vec3 base = mix(vec3(0.18, 0.27, 0.32), vec3(0.38, 0.48, 0.53), smoothstep(-0.2, 0.7, n));
   float caustic = smoothstep(0.7, 0.99, fbm(p * 7.0 + n * 0.9 + vec2(t * 1.4, -t)));
-  base += vec3(0.94, 0.99, 1.0) * caustic * 0.025;
+  base += vec3(0.7, 0.8, 0.84) * caustic * 0.06;
   float d = length(p);
-  base = mix(base, vec3(0.73, 0.86, 0.92), smoothstep(4.0, 13.0, d) * 0.3);
+  base = mix(base, vec3(0.22, 0.32, 0.37), smoothstep(4.0, 13.0, d) * 0.3);
   gl_FragColor = vec4(base, 1.0);
 }
 `
@@ -216,8 +231,8 @@ export function PoolFloor() {
     uniforms.uTime.value = clock.elapsedTime
   })
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.4, 0]} frustumCulled={false} renderOrder={0}>
-      <planeGeometry args={[140, 140, 1, 1]} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.1, 0]} frustumCulled={false} renderOrder={0}>
+      <planeGeometry args={[4000, 4000, 1, 1]} />
       <shaderMaterial
         vertexShader={FLOOR_VERT}
         fragmentShader={FLOOR_FRAG}

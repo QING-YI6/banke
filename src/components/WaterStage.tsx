@@ -140,10 +140,10 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           className="stage__canvas"
           dpr={[1, coarse ? 1.4 : 1.8]}
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-          camera={{ fov: 38, near: 0.1, far: 160, position: [0, 7, 4] }}
+          camera={{ fov: 38, near: 0.1, far: 600, position: [0, 7, 4] }}
           onCreated={({ gl }) => {
             gl.toneMapping = THREE.ACESFilmicToneMapping
-            gl.toneMappingExposure = 1.0
+            gl.toneMappingExposure = 0.92
             gl.outputColorSpace = THREE.SRGBColorSpace
           }}
         >
