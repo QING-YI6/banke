@@ -1,0 +1,43 @@
+name: build-desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: 构建 Windows 免安装版
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci --ignore-scripts
+
+      - name: 构建单文件网页
+        run: npm run build
+
+      - name: 安装打包器
+        run: npm install --no-save electron@33.2.0 electron-builder@25.1.8
+
+      - name: 打包 exe
+        run: npx electron-builder --win portable --publish never
+
+      - name: 上传 exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: banke-windows
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 30

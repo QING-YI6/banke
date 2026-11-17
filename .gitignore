@@ -1,0 +1,24 @@
+node_modules/
+dist/
+release/
+.pnpm-store/
+.tools/
+.DS_Store
+*.local
+.vscode/
+.idea/
+
+# Android 生成物
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/.idea/
+
+# 开发截图与临时文件
+tools/shots/
+tools/chrome-profile*/
+tools/.tmp-*
+tools/bundle-check.mjs

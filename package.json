@@ -1,0 +1,67 @@
+{
+  "name": "banke",
+  "private": true,
+  "version": "1.0.0",
+  "description": "半刻 · 一颗被切成四瓣的番茄钟",
+  "author": "半刻",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && node tools/bundle.mjs",
+    "preview": "vite preview",
+    "android": "npm run build && cap sync android",
+    "android:open": "cap open android",
+    "desktop": "electron .",
+    "dist:win": "npm run build && electron-builder --win portable",
+    "shot": "node tools/shoot.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "6.2.0",
+    "@react-three/fiber": "8.17.10",
+    "framer-motion": "11.11.17",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "three": "0.170.0",
+    "zustand": "4.5.5"
+  },
+  "devDependencies": {
+    "@capacitor/android": "6.2.0",
+    "@capacitor/cli": "6.2.0",
+    "@rollup/plugin-commonjs": "28.0.1",
+    "@rollup/plugin-node-resolve": "15.3.0",
+    "@rollup/plugin-replace": "6.0.2",
+    "@swc/core": "1.7.39",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@types/three": "0.170.0",
+    "@vitejs/plugin-react": "4.3.3",
+    "@vitejs/plugin-react-swc": "3.7.1",
+    "puppeteer-core": "23.9.0",
+    "rollup": "4.68.5",
+    "terser": "5.36.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vite-plugin-singlefile": "2.0.3"
+  },
+  "build": {
+    "appId": "com.banke.timer",
+    "productName": "半刻",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Banke-${version}.exe"
+    }
+  }
+}
