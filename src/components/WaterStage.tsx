@@ -39,11 +39,19 @@ function ResumeChip({ active, onClick }: { active: ActiveSession; onClick: () =>
 export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSettled, onResume }: StageProps) {
   const settings = useBanke((s) => s.settings)
   const updateSettings = useBanke((s) => s.updateSettings)
-  const [phase, setPhase] = useState<ScenePhase>(initialSettled ? 'settled' : 'idle')
-  const [skip, setSkip] = useState(initialSettled)
+  const [webgl] = useState(() => {
+    try {
+      const probe = document.createElement('canvas')
+      return !!probe.getContext('webgl2')
+    } catch {
+      return false
+    }
+  })
+  const [phase, setPhase] = useState<ScenePhase>(initialSettled || !webgl ? 'settled' : 'idle')
+  const [skip, setSkip] = useState(initialSettled || !webgl)
   const [leaving, setLeaving] = useState<Quadrant | null>(null)
   const labelsRef = useRef<HTMLDivElement>(null)
-  const settledOnce = useRef(initialSettled)
+  const settledOnce = useRef(initialSettled || !webgl)
 
   const coarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
   const labelOffset = typeof window !== 'undefined' && window.innerWidth < 760 ? 104 : 136
@@ -98,26 +106,52 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
 
   return (
     <div className={`stage${leaving ? ' is-leaving' : ''}`} data-phase={phase}>
-      <Canvas
-        className="stage__canvas"
-        dpr={[1, coarse ? 1.4 : 1.8]}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        camera={{ fov: 38, near: 0.1, far: 140, position: [0, 2.8, 6.8] }}
-        onCreated={({ gl }) => {
-          gl.toneMapping = THREE.ACESFilmicToneMapping
-          gl.toneMappingExposure = 0.86
-          gl.outputColorSpace = THREE.SRGBColorSpace
-        }}
-      >
-        <TomatoScene
-          skipIntro={skip}
-          entering={leaving}
-          waterIntensity={settings.water}
-          onSelect={enter}
-          onOpenStem={onOpenStem}
-          onPhase={setPhase}
-        />
-      </Canvas>
+      {webgl ? (
+        <Canvas
+          className="stage__canvas"
+          dpr={[1, coarse ? 1.4 : 1.8]}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+          camera={{ fov: 38, near: 0.1, far: 140, position: [0, 2.8, 6.8] }}
+          onCreated={({ gl }) => {
+            gl.toneMapping = THREE.ACESFilmicToneMapping
+            gl.toneMappingExposure = 0.86
+            gl.outputColorSpace = THREE.SRGBColorSpace
+          }}
+        >
+          <TomatoScene
+            skipIntro={skip}
+            entering={leaving}
+            waterIntensity={settings.water}
+            onSelect={enter}
+            onOpenStem={onOpenStem}
+            onPhase={setPhase}
+          />
+        </Canvas>
+      ) : (
+        <div className="fallback">
+          <p className="fallback__note">这台设备的浏览器没有开启 WebGL，先用下面的清单进入。</p>
+          <div className="fallback__grid">
+            {QUADRANTS.map((q) => {
+              const info = QUADRANT_INFO[q]
+              return (
+                <button
+                  key={q}
+                  className="fallback__item"
+                  onClick={() => enter(q)}
+                  style={{ '--accent': info.accent } as CSSProperties}
+                >
+                  <span>{info.numeral}</span>
+                  <strong>{info.name}</strong>
+                  <small>{info.en}</small>
+                </button>
+              )
+            })}
+          </div>
+          <button className="fallback__stem" onClick={onOpenStem}>
+            柄 · 记录与设置
+          </button>
+        </div>
+      )}
 
       <div className="stage__vignette" />
 
@@ -142,6 +176,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
         </button>
       </div>
 
+      {webgl && (
       <div ref={labelsRef} className={`slice-labels${phase === 'settled' ? ' is-live' : ''}`}>
         {QUADRANTS.map((q, i) => {
           const info = QUADRANT_INFO[q]
@@ -173,13 +208,20 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           <span className="stem-label__text">记录 · 设置</span>
         </button>
       </div>
+      )}
 
       <div className="stage__bottom">
         {phase === 'settled' ? (
           <p className="stage__hint">
-            <span>拖动水面，转一转视角</span>
-            <span className="stage__hint-dot" />
-            <span>点一瓣，落下这一刻</span>
+            {webgl ? (
+              <>
+                <span>拖动水面，转一转视角</span>
+                <span className="stage__hint-dot" />
+                <span>点一瓣，落下这一刻</span>
+              </>
+            ) : (
+              <span>选一瓣，落下这一刻</span>
+            )}
           </p>
         ) : (
           <p className="stage__hint stage__hint--quiet">一刀，四瓣</p>

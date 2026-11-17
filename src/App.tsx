@@ -99,6 +99,37 @@ export default function App() {
     }
   }, [])
 
+  /* ---- Android 实体返回键：先合上柄，再回水面 ---- */
+  useEffect(() => {
+    const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+    if (!cap?.isNativePlatform?.()) return
+    let remove: (() => void) | undefined
+    let cancelled = false
+    import('@capacitor/app')
+      .then(({ App: NativeApp }) =>
+        NativeApp.addListener('backButton', () => {
+          if (panel) {
+            setPanel(null)
+            return
+          }
+          if (screen === 'focus') {
+            const active = useBanke.getState().active
+            if (active?.phase === 'done') useBanke.getState().closeSession()
+            setScreen('water')
+          }
+        }),
+      )
+      .then((handle) => {
+        if (cancelled) void handle.remove()
+        else remove = () => void handle.remove()
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+      remove?.()
+    }
+  }, [panel, screen])
+
   const enterFocus = useCallback((q: Quadrant) => {
     setFocusQuadrant(q)
     setIntroSeen(true)

@@ -7,6 +7,8 @@
 
 ![开场](docs/screenshots/stage.png)
 
+![切开的一瞬](docs/screenshots/cut.png)
+
 | 专注 | 记录 | 手机 |
 | --- | --- | --- |
 | ![专注](docs/screenshots/timer.png) | ![记录](docs/screenshots/records.png) | ![手机](docs/screenshots/mobile.png) |
