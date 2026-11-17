@@ -66,9 +66,9 @@ function SkyDome() {
           void main() {
             vec3 d = normalize(vDir);
             float h = d.y;
-            vec3 top = vec3(0.55, 0.69, 0.78);
-            vec3 mid = vec3(0.74, 0.83, 0.87);
-            vec3 horizon = vec3(0.906, 0.933, 0.941);
+            vec3 top = vec3(0.6, 0.73, 0.81);
+            vec3 mid = vec3(0.8, 0.88, 0.91);
+            vec3 horizon = vec3(0.933, 0.957, 0.961);
             vec3 col = mix(horizon, mid, smoothstep(-0.02, 0.16, h));
             col = mix(col, top, smoothstep(0.12, 0.7, h));
             vec3 sunDir = normalize(vec3(-0.4, 0.55, -0.9));

@@ -84,7 +84,7 @@ void main() {
   float fres = pow(1.0 - clamp(dot(n, V), 0.0, 1.0), 2.6);
   vec3 R = reflect(-V, n);
   float up = clamp(R.y, 0.0, 1.0);
-  vec3 sky = mix(uHorizon, vec3(0.74, 0.83, 0.87), smoothstep(0.02, 0.5, up));
+  vec3 sky = mix(uHorizon, vec3(0.8, 0.88, 0.91), smoothstep(0.02, 0.5, up));
 
   vec3 sunDir = normalize(vec3(-0.4, 0.72, -0.9));
   float sundot = max(dot(R, sunDir), 0.0);
@@ -92,12 +92,13 @@ void main() {
   float glint = pow(sundot, 300.0);
 
   vec3 col = mix(uDeep, uShallow, 0.38 + 0.18 * h);
-  col = mix(col, sky, 0.28 + 0.6 * fres);
+  col = mix(col, sky, 0.32 + 0.58 * fres);
 
   // 银中透亮：把蓝往银灰拉一点，但保留水色
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(col, vec3(lum) * vec3(1.03, 1.0, 0.99), 0.22);
-  col += vec3(0.72, 0.8, 0.83) * pow(fres, 2.2) * 0.22;
+  col = mix(col, vec3(lum) * vec3(1.03, 1.0, 0.99), 0.2);
+  col += vec3(0.78, 0.85, 0.88) * pow(fres, 2.2) * 0.2;
+  col += vec3(0.07, 0.08, 0.085) * (0.4 + 0.6 * fres);
 
   col += uSun * (glow * 0.14 + glint * 1.5);
 
@@ -121,7 +122,7 @@ void main() {
   float fog = smoothstep(7.0, 34.0, dist);
   col = mix(col, uHorizon, fog * 0.92);
 
-  float alpha = 0.62 + 0.3 * fres;
+  float alpha = 0.66 + 0.28 * fres;
   gl_FragColor = vec4(col, alpha);
 }
 `
@@ -131,9 +132,9 @@ export function Water({ intensity }: { intensity: number }) {
     () => ({
       uTime: { value: 0 },
       uIntensity: { value: intensity },
-      uDeep: { value: new THREE.Color('#375262') },
-      uShallow: { value: new THREE.Color('#9db3bd') },
-      uHorizon: { value: new THREE.Color('#e7eef0') },
+      uDeep: { value: new THREE.Color('#44606f') },
+      uShallow: { value: new THREE.Color('#b0c4cc') },
+      uHorizon: { value: new THREE.Color('#eef4f5') },
       uSun: { value: new THREE.Color('#ffffff') },
       uImpact: {
         value: [
@@ -215,11 +216,11 @@ void main() {
   vec2 p = vWorld.xz * 0.9;
   float t = uTime * 0.04;
   float n = fbm(p * 1.7 + vec2(t, -t));
-  vec3 base = mix(vec3(0.18, 0.27, 0.32), vec3(0.38, 0.48, 0.53), smoothstep(-0.2, 0.7, n));
+  vec3 base = mix(vec3(0.24, 0.34, 0.39), vec3(0.46, 0.56, 0.61), smoothstep(-0.2, 0.7, n));
   float caustic = smoothstep(0.7, 0.99, fbm(p * 7.0 + n * 0.9 + vec2(t * 1.4, -t)));
-  base += vec3(0.7, 0.8, 0.84) * caustic * 0.06;
+  base += vec3(0.78, 0.86, 0.9) * caustic * 0.06;
   float d = length(p);
-  base = mix(base, vec3(0.22, 0.32, 0.37), smoothstep(4.0, 13.0, d) * 0.3);
+  base = mix(base, vec3(0.3, 0.4, 0.45), smoothstep(4.0, 13.0, d) * 0.3);
   gl_FragColor = vec4(base, 1.0);
 }
 `
