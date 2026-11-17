@@ -97,7 +97,7 @@ export function RecordsView() {
                   <div className="record__main">
                     <div className="record__top">
                       <span className="record__label">{s.label}</span>
-                      {!s.reached && <span className="record__tag">未满</span>}
+                      {s.mode === 'countdown' && !s.reached && <span className="record__tag">未满</span>}
                     </div>
                     <div className="record__meta">
                       {QUADRANT_INFO[s.quadrant].name} · {formatTimeOfDay(s.startedAt)}—{formatTimeOfDay(s.endedAt)}

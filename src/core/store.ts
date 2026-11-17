@@ -149,9 +149,13 @@ export const useBanke = create<BankeState>()(
         set((s) => ({
           active: { ...a, accumulatedMs: ms, startedAt: null, phase: 'done' },
           sessions: [record, ...s.sessions].slice(0, MAX_RECORDS),
-          petMood: reached ? 'proud' : 'calm',
+          petMood: reached ? 'proud' : a.mode === 'countdown' ? 'worried' : 'calm',
         }))
-        petBus.emit({ type: 'complete', quadrant: a.quadrant, seconds, reached })
+        if (a.mode === 'countdown' && !reached) {
+          petBus.emit({ type: 'abandon', quadrant: a.quadrant, seconds })
+        } else {
+          petBus.emit({ type: 'complete', quadrant: a.quadrant, seconds, reached: true })
+        }
       },
 
       closeSession: () => {

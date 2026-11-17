@@ -14,9 +14,11 @@ export function DoneView({ active, onExit, onAgain, onBreak }: Props) {
   const settings = useBanke((s) => s.settings)
   const info = QUADRANT_INFO[active.quadrant]
   const reached =
-    active.mode === 'countdown' && active.targetSec !== null
-      ? active.accumulatedMs / 1000 >= active.targetSec - 1
-      : false
+    active.mode === 'countup'
+      ? true
+      : active.targetSec !== null
+        ? active.accumulatedMs / 1000 >= active.targetSec - 1
+        : false
   const todayCount = sessions.filter((s) => dayKey(s.endedAt) === dayKey(Date.now())).length
   const minutes = active.accumulatedMs / 1000
 
