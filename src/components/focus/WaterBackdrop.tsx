@@ -56,25 +56,33 @@ export function WaterBackdrop({ intensity = 1 }: { intensity?: number }) {
         float n = fbm(p * 2.6 + vec2(t * 0.7, -t * 0.5));
         float n2 = fbm(p * 5.2 - vec2(t * 1.1, t * 0.6) + n * 0.8);
 
-        vec3 deep = vec3(0.017, 0.058, 0.052);
-        vec3 shallow = vec3(0.052, 0.132, 0.112);
+        vec3 deep = vec3(0.63, 0.74, 0.8);
+        vec3 shallow = vec3(0.87, 0.93, 0.96);
         float depth = smoothstep(0.0, 1.0, uv.y * 0.85 + n * 0.4);
         vec3 col = mix(deep, shallow, depth);
 
-        float caustic = smoothstep(0.56, 0.94, n2 + sin(p.x * 6.0 + t * 3.0) * 0.07);
-        col += vec3(0.22, 0.4, 0.32) * caustic * (0.26 * uIntensity);
+        float caustic = smoothstep(0.62, 0.94, n2 + sin(p.x * 6.0 + t * 3.0) * 0.06);
+        col += vec3(0.94, 0.99, 1.0) * caustic * (0.1 * uIntensity);
 
-        float caustic2 = smoothstep(0.7, 1.0, n2 * 0.7 + n * 0.55);
-        col += vec3(0.16, 0.3, 0.24) * caustic2 * (0.14 * uIntensity);
+        float caustic2 = smoothstep(0.72, 1.0, n2 * 0.7 + n * 0.55);
+        col += vec3(0.86, 0.95, 1.0) * caustic2 * (0.05 * uIntensity);
+
+        float ripple = smoothstep(0.6, 0.95, fbm(p * 9.0 + vec2(t * 1.2, -t * 0.8)));
+        col -= vec3(0.04, 0.05, 0.055) * ripple * 0.3 * uIntensity;
+
+        vec2 gg = fract(p * 70.0 + vec2(t * 0.08, -t * 0.06)) - 0.5;
+        float hs = hash(floor(p * 70.0) + floor(t * 1.1));
+        float spark = smoothstep(0.07, 0.0, length(gg)) * step(0.955, hs);
+        col += vec3(1.0) * spark * 0.32 * uIntensity;
 
         float shaft = smoothstep(0.16, 0.0, abs(uv.x - (0.34 + uv.y * 0.12 + sin(t * 0.4) * 0.015)));
-        col += vec3(0.16, 0.22, 0.18) * shaft * smoothstep(0.05, 0.9, uv.y) * 0.05 * uIntensity;
+        col += vec3(0.95, 0.98, 1.0) * shaft * smoothstep(0.05, 0.9, uv.y) * 0.06 * uIntensity;
 
-        col += vec3(0.14, 0.1, 0.055) * smoothstep(0.6, 1.1, uv.y) * 0.2;
+        col += vec3(0.9, 0.95, 0.98) * smoothstep(0.55, 1.1, uv.y) * 0.12;
 
         float d = distance(uv, vec2(0.5, 0.44));
-        col *= 0.58 + 0.42 * smoothstep(0.95, 0.2, d);
-        col += (hash(gl_FragCoord.xy) - 0.5) * 0.008;
+        col *= 0.8 + 0.2 * smoothstep(0.95, 0.2, d);
+        col += (hash(gl_FragCoord.xy) - 0.5) * 0.006;
 
         gl_FragColor = vec4(col, 1.0);
       }

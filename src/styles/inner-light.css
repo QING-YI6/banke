@@ -1,0 +1,579 @@
+/* ---------------------------------------------------------
+   内页浅色主题：银蓝水光 + 墨色文字
+   只作用于 .focus-shell 与 .panel，不动开场
+--------------------------------------------------------- */
+
+.focus-shell,
+.panel {
+  --paper: #142a30;
+  --paper-90: rgba(20, 42, 48, 0.9);
+  --paper-70: rgba(20, 42, 48, 0.7);
+  --paper-55: rgba(20, 42, 48, 0.58);
+  --paper-40: rgba(20, 42, 48, 0.46);
+  --paper-28: rgba(20, 42, 48, 0.34);
+  --paper-16: rgba(20, 42, 48, 0.18);
+  --paper-08: rgba(20, 42, 48, 0.08);
+  --line: rgba(20, 42, 48, 0.14);
+  --line-strong: rgba(20, 42, 48, 0.3);
+  --gold: #8f6422;
+  --gold-soft: rgba(143, 100, 34, 0.36);
+  --tomato: #c84834;
+  --tomato-soft: #d95a43;
+}
+
+.focus-shell {
+  background: #d9e9f0;
+}
+
+.focus-shell__shade {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.24) 16%, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, 0) 66%, rgba(238, 248, 252, 0.4) 100%),
+    radial-gradient(120% 90% at 50% 46%, rgba(255, 255, 255, 0.22) 25%, rgba(150, 182, 196, 0.12) 100%);
+}
+
+.focus-shell .water-backdrop {
+  opacity: 1;
+}
+
+/* 顶栏 */
+.focus-shell .bar-btn {
+  color: var(--paper-55);
+}
+
+.focus-shell .bar-btn:hover {
+  color: var(--paper);
+}
+
+.focus-shell .focus__name {
+  color: var(--paper);
+}
+
+.focus-shell .focus__en {
+  color: var(--paper-28);
+}
+
+.focus-shell .icon-btn {
+  border-color: var(--line);
+  color: var(--paper-70);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.focus-shell .icon-btn:hover {
+  color: var(--paper);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* 计时 */
+.focus-shell .focus--timer::before {
+  color: rgba(20, 42, 48, 0.18);
+}
+
+.focus-shell .timer__meta {
+  color: var(--paper-40);
+}
+
+.focus-shell .dial {
+  color: var(--paper);
+}
+
+.focus-shell .dial__track {
+  stroke: rgba(20, 42, 48, 0.18);
+}
+
+.focus-shell .dial__tick {
+  stroke: rgba(20, 42, 48, 0.28);
+}
+
+.focus-shell .dial__tick.is-major {
+  stroke: rgba(20, 42, 48, 0.5);
+}
+
+.focus-shell .dial__arc {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 55%, transparent));
+  opacity: 0.95;
+}
+
+.focus-shell .dial__dot {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 65%, transparent));
+}
+
+.focus-shell .timer__digits {
+  background: linear-gradient(180deg, #16292e 0%, #2b464d 62%, #456269 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 6px 22px rgba(255, 255, 255, 0.45));
+}
+
+.focus-shell .timer__caption {
+  color: var(--paper-40);
+}
+
+.focus-shell .timer__paused {
+  color: var(--paper-55);
+}
+
+.focus-shell .timer__label {
+  color: var(--paper-55);
+}
+
+.focus-shell .timer__hint {
+  color: var(--paper-40);
+}
+
+/* 按钮 */
+.focus-shell .btn--primary,
+.panel .btn--primary {
+  background: #15292f;
+  color: #f7f1e3;
+  box-shadow: 0 12px 30px rgba(30, 60, 70, 0.16);
+}
+
+.focus-shell .btn--primary:hover,
+.panel .btn--primary:hover {
+  background: #1e3a41;
+  color: #fffaf0;
+}
+
+.focus-shell .btn--ghost,
+.panel .btn--ghost {
+  color: var(--paper-70);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.focus-shell .btn--ghost:hover,
+.panel .btn--ghost:hover {
+  color: var(--paper);
+  border-color: rgba(20, 42, 48, 0.45);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.focus-shell .btn--danger,
+.panel .btn--danger {
+  color: #a53a28;
+  border-color: rgba(165, 58, 40, 0.32);
+}
+
+.focus-shell .text-btn,
+.panel .text-btn {
+  color: var(--paper-55);
+}
+
+.focus-shell .text-btn:hover,
+.panel .text-btn:hover {
+  color: var(--paper);
+}
+
+/* 输入环节 */
+.focus-shell .setup__eyebrow {
+  color: var(--paper-40);
+}
+
+.focus-shell .setup__num {
+  color: var(--gold);
+}
+
+.focus-shell .setup__question {
+  color: var(--paper);
+}
+
+.focus-shell .setup__input {
+  color: var(--paper);
+  border-bottom-color: var(--line-strong);
+}
+
+.focus-shell .setup__input::placeholder {
+  color: rgba(20, 42, 48, 0.5);
+}
+
+.focus-shell .setup__input:focus {
+  border-bottom-color: var(--gold-soft);
+}
+
+.focus-shell .setup__row-label {
+  color: var(--paper-40);
+}
+
+.focus-shell .seg__item {
+  border-color: var(--line);
+  color: var(--paper-55);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.focus-shell .seg__item small {
+  color: var(--paper-28);
+}
+
+.focus-shell .seg__item.is-active {
+  border-color: var(--gold-soft);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--paper);
+}
+
+.focus-shell .seg__item.is-active small {
+  color: var(--gold);
+}
+
+.focus-shell .chip {
+  border-color: var(--line);
+  color: var(--paper-55);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.focus-shell .chip span {
+  color: var(--paper-28);
+}
+
+.focus-shell .chip.is-active {
+  border-color: var(--gold-soft);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--paper);
+}
+
+.focus-shell .check {
+  color: var(--paper-55);
+}
+
+.focus-shell .check__box {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.focus-shell .setup__tip {
+  color: var(--paper-40);
+}
+
+/* 完成 */
+.focus-shell .done::after {
+  color: rgba(20, 42, 48, 0.045);
+}
+
+.focus-shell .done__eyebrow {
+  color: var(--gold);
+}
+
+.focus-shell .done__title {
+  color: var(--paper);
+  text-shadow: 0 8px 30px rgba(255, 255, 255, 0.5);
+}
+
+.focus-shell .done__sub {
+  color: var(--paper-70);
+}
+
+.focus-shell .done__meta {
+  color: var(--paper-28);
+}
+
+.focus-shell .done__stat strong {
+  color: var(--paper);
+}
+
+.focus-shell .done__stat span {
+  color: var(--paper-28);
+}
+
+.focus-shell .done__quote {
+  color: var(--paper-28);
+}
+
+/* 结束确认 */
+.focus-shell .confirm {
+  background: rgba(211, 229, 237, 0.55);
+}
+
+.focus-shell .confirm__panel {
+  background: rgba(248, 251, 252, 0.96);
+  border-color: var(--line);
+  box-shadow: 0 30px 80px rgba(30, 60, 70, 0.18);
+}
+
+.focus-shell .confirm__panel h3 {
+  color: var(--paper);
+}
+
+.focus-shell .confirm__panel p {
+  color: var(--paper-55);
+}
+
+/* ---------------------------------------------------------
+   柄 · 浅色玻璃抽屉
+--------------------------------------------------------- */
+.panel-backdrop {
+  background: rgba(28, 52, 62, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.panel {
+  background:
+    radial-gradient(120% 50% at 100% 0%, rgba(150, 192, 212, 0.4) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(246, 251, 253, 0.98), rgba(220, 236, 243, 0.99));
+  border-left-color: rgba(20, 42, 48, 0.14);
+  box-shadow: -40px 0 90px rgba(30, 60, 70, 0.18);
+}
+
+.panel__brand h2 {
+  color: var(--paper);
+}
+
+.panel__brand p {
+  color: var(--paper-40);
+}
+
+.panel__close {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.panel__close span {
+  background: var(--paper-55);
+}
+
+.panel__close:hover {
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.panel__tab {
+  color: var(--paper-40);
+}
+
+.panel__tab em {
+  color: var(--paper-28);
+}
+
+.panel__tab.is-active {
+  color: var(--paper);
+}
+
+.panel .stat strong {
+  color: var(--paper);
+}
+
+.panel .stat span,
+.panel .chart__head,
+.panel .chart__value,
+.panel .chart__label {
+  color: var(--paper-28);
+}
+
+.panel .chart__col.is-today .chart__label {
+  color: var(--paper-70);
+}
+
+.panel .daygroup__head h3 {
+  color: var(--paper-70);
+}
+
+.panel .daygroup__head span {
+  color: var(--paper-28);
+}
+
+.panel .record {
+  border-top-color: rgba(20, 42, 48, 0.08);
+}
+
+.panel .record__label {
+  color: var(--paper);
+}
+
+.panel .record__tag {
+  color: var(--paper-28);
+  border-color: var(--line);
+}
+
+.panel .record__meta {
+  color: var(--paper-28);
+}
+
+.panel .record__time {
+  color: var(--paper-55);
+}
+
+.panel .empty__mark {
+  border-color: var(--line-strong);
+  color: var(--paper-28);
+}
+
+.panel .empty p {
+  color: var(--paper-55);
+}
+
+.panel .empty span {
+  color: var(--paper-28);
+}
+
+.panel .settings__note {
+  color: var(--paper-40);
+}
+
+.panel .setting-row + .setting-row {
+  border-top-color: rgba(20, 42, 48, 0.07);
+}
+
+.panel .setting-row__label {
+  color: var(--paper);
+}
+
+.panel .setting-row__label small {
+  color: var(--paper-40);
+}
+
+.panel .stepper button {
+  border-color: var(--line);
+  color: var(--paper-55);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.panel .stepper button:hover {
+  border-color: var(--line-strong);
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.panel .stepper span {
+  color: var(--paper);
+}
+
+.panel .stepper em {
+  color: var(--paper-28);
+}
+
+.panel .toggle {
+  border-color: var(--line-strong);
+  background: rgba(20, 42, 48, 0.08);
+}
+
+.panel .toggle__knob {
+  background: rgba(20, 42, 48, 0.4);
+}
+
+.panel .toggle.is-on {
+  background: rgba(143, 100, 34, 0.22);
+  border-color: var(--gold-soft);
+}
+
+.panel .toggle.is-on .toggle__knob {
+  background: var(--gold);
+}
+
+.panel .slider input[type="range"] {
+  background: var(--line-strong);
+}
+
+.panel .slider input[type="range"]::-webkit-slider-thumb {
+  background: var(--gold);
+  border-color: #f3f9fb;
+}
+
+.panel .slider input[type="range"]::-moz-range-thumb {
+  background: var(--gold);
+  border-color: #f3f9fb;
+}
+
+.panel .slider span {
+  color: var(--paper-40);
+}
+
+.panel .mini-seg {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.panel .mini-seg button {
+  color: var(--paper-40);
+}
+
+.panel .mini-seg button.is-active {
+  background: rgba(143, 100, 34, 0.14);
+  color: var(--paper);
+}
+
+.panel .field span {
+  color: var(--paper-40);
+}
+
+.panel .field input {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: var(--line);
+  color: var(--paper);
+}
+
+.panel .field input::placeholder {
+  color: var(--paper-28);
+}
+
+.panel .danger-confirm {
+  border-color: rgba(200, 72, 52, 0.3);
+  background: rgba(200, 72, 52, 0.06);
+}
+
+.panel .danger-confirm p {
+  color: var(--paper-55);
+}
+
+.panel .settings__message {
+  color: var(--gold);
+}
+
+.panel .settings__footer {
+  color: var(--paper-28);
+  border-top-color: var(--line);
+}
+
+.panel .about__title,
+.panel .about__step h3 {
+  color: var(--paper);
+}
+
+.panel .about__manifesto {
+  color: var(--paper-70);
+}
+
+.panel .about__pinyin,
+.panel .about__meta span,
+.panel .about__credits {
+  color: var(--paper-40);
+}
+
+.panel .about-step p {
+  color: var(--paper-40);
+}
+
+.panel .about__meta strong {
+  color: var(--paper-55);
+}
+
+.panel .about-step {
+  border-bottom-color: var(--line);
+}
+
+.panel .about__steps {
+  border-top-color: var(--line);
+}
+
+.panel .about__meta {
+  border-top-color: var(--line);
+  border-bottom-color: var(--line);
+}
+
+/* 滚动条 */
+.focus-shell,
+.panel {
+  scrollbar-color: rgba(20, 42, 48, 0.22) transparent;
+}
+
+.focus-shell *::-webkit-scrollbar-thumb,
+.panel *::-webkit-scrollbar-thumb {
+  background: rgba(20, 42, 48, 0.18);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    border-top-color: var(--line);
+  }
+}
