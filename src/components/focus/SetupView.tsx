@@ -17,8 +17,12 @@ export function SetupView({ quadrant, onBack, onStart, onOpenPanel }: Props) {
   const setMinutes = useBanke((s) => s.setMinutes)
   const [label, setLabel] = useState('')
   const [mode, setMode] = useState<SessionMode>('countdown')
-  const [minutes, setLocalMinutes] = useState(settings.minutes[quadrant] || 25)
+  const initialMinutes = settings.minutes[quadrant] || 25
+  const [minutes, setLocalMinutes] = useState(initialMinutes)
+  const [customOpen, setCustomOpen] = useState(!MINUTE_PRESETS.includes(initialMinutes))
+  const [customText, setCustomText] = useState(String(initialMinutes))
   const inputRef = useRef<HTMLInputElement>(null)
+  const customRef = useRef<HTMLInputElement>(null)
   const coarse = window.matchMedia('(pointer: coarse)').matches
 
   useEffect(() => {
@@ -33,10 +37,24 @@ export function SetupView({ quadrant, onBack, onStart, onOpenPanel }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onBack])
 
-  const begin = (text = label) => {
-    if (mode === 'countdown') setMinutes(quadrant, minutes)
+  const applyCustom = (raw: string, fallback = minutes): number => {
+    const parsed = Math.round(Number(raw))
+    const value = Number.isFinite(parsed) && parsed > 0 ? Math.min(600, Math.max(1, parsed)) : fallback
+    setLocalMinutes(value)
+    setCustomText(String(value))
+    return value
+  }
+
+  const openCustom = () => {
+    setCustomOpen(true)
+    setCustomText(String(minutes))
+    window.setTimeout(() => customRef.current?.focus(), 0)
+  }
+
+  const begin = (text = label, mins = minutes) => {
+    if (mode === 'countdown') setMinutes(quadrant, mins)
     sound.start()
-    onStart({ label: text.trim(), mode, minutes })
+    onStart({ label: text.trim(), mode, minutes: mins })
   }
 
   return (
@@ -103,17 +121,58 @@ export function SetupView({ quadrant, onBack, onStart, onOpenPanel }: Props) {
         {mode === 'countdown' && (
           <div className="setup__row">
             <span className="setup__row-label">多久</span>
-            <div className="chips">
-              {MINUTE_PRESETS.map((m) => (
+            <div className="setup__duration">
+              <div className="chips">
+                {MINUTE_PRESETS.map((m) => (
+                  <button
+                    key={m}
+                    className={`chip${!customOpen && minutes === m ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setCustomOpen(false)
+                      setLocalMinutes(m)
+                    }}
+                  >
+                    {m}
+                    <span>分</span>
+                  </button>
+                ))}
                 <button
-                  key={m}
-                  className={`chip${minutes === m ? ' is-active' : ''}`}
-                  onClick={() => setLocalMinutes(m)}
+                  className={`chip chip--custom${customOpen ? ' is-active' : ''}`}
+                  onClick={openCustom}
                 >
-                  {m}
+                  自定义
                   <span>分</span>
                 </button>
-              ))}
+              </div>
+
+              {customOpen && (
+                <div className="custom-duration">
+                  <input
+                    ref={customRef}
+                    type="number"
+                    min={1}
+                    max={600}
+                    step={1}
+                    value={customText}
+                    aria-label="自定义分钟数"
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      setCustomText(raw)
+                      const n = Math.round(Number(raw))
+                      if (Number.isFinite(n) && n >= 1 && n <= 600) setLocalMinutes(n)
+                    }}
+                    onBlur={() => applyCustom(customText)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = applyCustom(customText)
+                        begin(label, value)
+                      }
+                    }}
+                  />
+                  <span className="custom-duration__unit">分钟</span>
+                  <em>1–600</em>
+                </div>
+              )}
             </div>
           </div>
         )}
