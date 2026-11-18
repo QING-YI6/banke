@@ -203,7 +203,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
             key={activeQ}
             className="slice-label is-active"
             data-anchor={activeQ}
-            data-offset={coarse ? -16 : -22}
+            data-offset={coarse ? 30 : 38}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => enter(activeQ)}
             style={{ '--accent': activeInfo.accent } as CSSProperties}

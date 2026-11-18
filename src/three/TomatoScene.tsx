@@ -17,7 +17,6 @@ export type ScenePhase = 'idle' | 'cutting' | 'opening' | 'settled'
 
 const CENTER_Y = 0.9
 const STEM_TOP = 1.82
-const FINAL_Y = 0.045
 const CUT_A = 2.0
 const CUT_B = 2.4
 const SPLIT_AT = 2.6
@@ -180,16 +179,19 @@ interface PieceFinal {
   scale: number
   theta: number
   outward: THREE.Vector3
+  ridge: THREE.Vector3
 }
 
-/** 让一块番茄的切面朝上、半圆向外，像西瓜一样平躺在水面上。 */
-function flatQuaternion(a: number, R: THREE.Vector3): THREE.Quaternion {
-  const up = new THREE.Vector3(0, 1, 0)
-  // 这一面的“朝外”法线。映射到 +Y 后，果肉朝上、皮和果身压在水里。
-  const n = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).normalize()
-  const p = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).normalize()
-  const local = new THREE.Matrix4().makeBasis(p, n, new THREE.Vector3().crossVectors(p, n).normalize())
-  const world = new THREE.Matrix4().makeBasis(R, up, new THREE.Vector3().crossVectors(R, up).normalize())
+/**
+ * 一块番茄立在水面上：皮（圆弧）朝下，芯的棱线横在顶部，像一块立起来的西瓜。
+ * 长边沿切线，前后宽度沿半径，所以左右长、前后宽，顶部是一条尖棱。
+ */
+function standQuaternion(aMid: number, T: THREE.Vector3): THREE.Quaternion {
+  const down = new THREE.Vector3(0, -1, 0)
+  const M = new THREE.Vector3(Math.cos(aMid), 0, Math.sin(aMid)).normalize()
+  const C = new THREE.Vector3(0, 1, 0) // 番茄中轴 = 顶部的芯棱
+  const local = new THREE.Matrix4().makeBasis(M, C, new THREE.Vector3().crossVectors(M, C).normalize())
+  const world = new THREE.Matrix4().makeBasis(down, T, new THREE.Vector3().crossVectors(down, T).normalize())
   const m = world.multiply(local.transpose())
   return new THREE.Quaternion().setFromRotationMatrix(m)
 }
@@ -208,17 +210,17 @@ function CameraRig({
   useFrame((_, dt) => {
     const mix = clamp(camMixRef.current, 0, 1)
     const portrait = size.width / size.height < 1.0
-    const r0 = portrait ? 7.8 : 5.1
-    const r1 = portrait ? 7.2 : 4.1
+    const r0 = portrait ? 8.4 : 5.2
+    const r1 = portrait ? 7.6 : 4.5
     let r = r0 + (r1 - r0) * mix
     if (entering) r = Math.max(2.6, r - dt * 8)
 
     const phi0 = 1.38
-    const phi1 = portrait ? 0.3 : 0.26
+    const phi1 = portrait ? 0.2 : 0.18
     const orbit = orbitRef.current
     const phi = phi0 + (phi1 - phi0) * mix + (orbit.el - phi1) * smoothstep((mix - 0.75) / 0.25)
     const az = orbit.az * smoothstep((mix - 0.75) / 0.25)
-    const targetY = CENTER_Y + ((portrait ? 0.38 : 0.34) - CENTER_Y) * mix
+    const targetY = CENTER_Y + ((portrait ? 0.42 : 0.42) - CENTER_Y) * mix
 
     camera.position.set(
       Math.sin(az) * Math.cos(phi) * r,
@@ -347,24 +349,26 @@ function SceneContent({
 
   const compact = size.width / size.height < 1.02
   const finals = useMemo<PieceFinal[]>(() => {
-    const scale = compact ? 0.46 : 0.55
-    const dist = compact ? 0.66 : 0.8
+    const scale = compact ? 0.4 : 0.56
+    const dist = compact ? 0.72 : 1.0
     return QUADRANTS.map((_, i) => {
       const theta = (i * Math.PI) / 2
       const R = new THREE.Vector3(Math.sin(theta), 0, Math.cos(theta))
-      const a1 = ((i + 1) * Math.PI) / 2
+      const T = new THREE.Vector3(Math.cos(theta), 0, -Math.sin(theta))
+      const aMid = theta + Math.PI / 4
       return {
-        position: new THREE.Vector3(R.x * dist, FINAL_Y - CENTER_Y, R.z * dist),
-        quaternion: flatQuaternion(a1, R),
+        position: new THREE.Vector3(R.x * dist, scale + 0.02 - CENTER_Y, R.z * dist),
+        quaternion: standQuaternion(aMid, T),
         scale,
         theta,
         outward: R.clone(),
+        ridge: T.clone(),
       }
     })
   }, [compact])
 
   const stemHome = useMemo<[number, number, number]>(
-    () => [0, compact ? 0.12 : 0.15, 0],
+    () => [0, compact ? 0.5 : 0.62, 0],
     [compact],
   )
 
@@ -585,15 +589,6 @@ function SceneContent({
       const emphasis = phaseRef.current === 'settled' ? (i === selectedRef.current ? 1.04 : 0.94) : 1
       g.scale.setScalar(s * emphasis)
 
-      // 落定后只留朝上的切面：皮和果身沉在水下，看起来像平放的西瓜瓣。
-      const flat = skipIntro || k > 0.985
-      const skinMesh = skinMeshes.current[i]
-      const capA = capAMeshes.current[i]
-      const capB = capBMeshes.current[i]
-      if (skinMesh) skinMesh.visible = !flat
-      if (capA) capA.visible = !flat
-      if (capB) capB.visible = true
-
       const shadow = shadowRefs.current[i]
       if (shadow) {
         shadow.position.set(f.position.x * spread, 0.016, f.position.z * spread)
@@ -610,9 +605,9 @@ function SceneContent({
       const anchor = anchorRefs.current[i]
       if (anchor) {
         anchor.position.set(
-          f.position.x * spread + f.outward.x * 0.42 * spread,
-          CENTER_Y + f.position.y * drop + 0.12,
-          f.position.z * spread + f.outward.z * 0.42 * spread,
+          f.position.x * spread + f.outward.x * 0.18 * spread,
+          CENTER_Y + f.position.y * drop + 0.03,
+          f.position.z * spread + f.outward.z * 0.18 * spread,
         )
       }
 
