@@ -22,8 +22,14 @@ const result = await page.evaluate(async () => {
   store.getState().startSession({ quadrant: 'work', label: 'short', mode: 'countdown', targetSec: 3 })
   await new Promise((r) => setTimeout(r, 3800))
   store.getState().closeSession()
+  store.getState().startSession({ quadrant: 'read', label: 'countup', mode: 'countup' })
+  await new Promise((r) => setTimeout(r, 3200))
+  store.getState().finish(true)
+  const countupSessions = store.getState().sessions.length
+  store.getState().closeSession()
   return {
     sessions: store.getState().sessions.length,
+    countupSessions,
     last: store.getState().sessions[0]?.seconds ?? null,
   }
 })

@@ -137,6 +137,10 @@ export const useBanke = create<BankeState>()(
           return
         }
         const seconds = Math.max(0, Math.round(ms / 1000))
+        // 限时模式看“计划时长”和实际时长：计划就没到三分钟的，结束时也不记。
+        const longEnough =
+          seconds > MIN_RECORD_SECONDS &&
+          (a.mode === 'countup' || (a.targetSec ?? 0) > MIN_RECORD_SECONDS)
         const record: SessionRecord = {
           id: a.id,
           quadrant: a.quadrant,
@@ -150,10 +154,7 @@ export const useBanke = create<BankeState>()(
         }
         set((s) => ({
           active: { ...a, accumulatedMs: ms, startedAt: null, phase: 'done' },
-          sessions:
-            seconds > MIN_RECORD_SECONDS
-              ? [record, ...s.sessions].slice(0, MAX_RECORDS)
-              : s.sessions,
+          sessions: longEnough ? [record, ...s.sessions].slice(0, MAX_RECORDS) : s.sessions,
           petMood: reached ? 'proud' : a.mode === 'countdown' ? 'worried' : 'calm',
         }))
         if (a.mode === 'countdown' && !reached) {
@@ -180,6 +181,7 @@ export const useBanke = create<BankeState>()(
                 r &&
                 typeof r.id === 'string' &&
                 typeof r.seconds === 'number' &&
+                r.seconds > MIN_RECORD_SECONDS &&
                 typeof r.endedAt === 'number' &&
                 typeof r.quadrant === 'string' &&
                 r.quadrant in QUADRANT_INFO,
@@ -210,6 +212,9 @@ export const useBanke = create<BankeState>()(
         return {
           ...current,
           ...p,
+          sessions: (p.sessions ?? []).filter(
+            (r) => r && typeof r.seconds === 'number' && r.seconds > MIN_RECORD_SECONDS,
+          ),
           settings: {
             ...DEFAULT_SETTINGS,
             ...(p.settings ?? {}),

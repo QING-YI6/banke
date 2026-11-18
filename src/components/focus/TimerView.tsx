@@ -118,7 +118,9 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
         >
           <div className={`timer__digits${paused ? ' is-paused' : ''}`}>{formatClock(displaySec)}</div>
           <div className="timer__caption">
-            {canToggle ? (
+            {paused ? (
+              <span>停在这一刻</span>
+            ) : canToggle ? (
               active.display === 'countdown' ? (
                 <span>轻点数字 · 看正计时</span>
               ) : (
@@ -128,7 +130,6 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
               <span>不用赶，我会一直在</span>
             )}
           </div>
-          {paused && <div className="timer__paused">停在这一刻</div>}
         </TimerDial>
 
         <div className="timer__actions">
