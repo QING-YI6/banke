@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.banke.timer',
   appName: '半刻',
   webDir: 'dist',
-  backgroundColor: '#07110f',
+  backgroundColor: '#d9e9f0',
   server: {
     androidScheme: 'https',
   },
