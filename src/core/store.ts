@@ -6,6 +6,8 @@ import { elapsedMs } from './time'
 import { petBus } from './petBus'
 
 const MAX_RECORDS = 600
+/** 不超过三分钟的一瓣，只算一次专注，不进记录。 */
+const MIN_RECORD_SECONDS = 180
 
 export interface StartInput {
   quadrant: Quadrant
@@ -148,7 +150,10 @@ export const useBanke = create<BankeState>()(
         }
         set((s) => ({
           active: { ...a, accumulatedMs: ms, startedAt: null, phase: 'done' },
-          sessions: [record, ...s.sessions].slice(0, MAX_RECORDS),
+          sessions:
+            seconds > MIN_RECORD_SECONDS
+              ? [record, ...s.sessions].slice(0, MAX_RECORDS)
+              : s.sessions,
           petMood: reached ? 'proud' : a.mode === 'countdown' ? 'worried' : 'calm',
         }))
         if (a.mode === 'countdown' && !reached) {

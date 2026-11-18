@@ -210,13 +210,13 @@ function CameraRig({
   useFrame((_, dt) => {
     const mix = clamp(camMixRef.current, 0, 1)
     const portrait = size.width / size.height < 1.0
-    const r0 = portrait ? 8.4 : 5.2
-    const r1 = portrait ? 7.6 : 4.5
+    const r0 = portrait ? 7.6 : 5.2
+    const r1 = portrait ? 6.2 : 4.0
     let r = r0 + (r1 - r0) * mix
     if (entering) r = Math.max(2.6, r - dt * 8)
 
     const phi0 = 1.38
-    const phi1 = portrait ? 0.2 : 0.18
+    const phi1 = portrait ? 0.16 : 0.14
     const orbit = orbitRef.current
     const phi = phi0 + (phi1 - phi0) * mix + (orbit.el - phi1) * smoothstep((mix - 0.75) / 0.25)
     const az = orbit.az * smoothstep((mix - 0.75) / 0.25)
@@ -265,8 +265,8 @@ function SceneContent({
   const orbitRef = useRef<OrbitState>({
     az: 0,
     targetAz: 0,
-    el: 0.45,
-    targetEl: 0.45,
+    el: 0.14,
+    targetEl: 0.14,
     dragging: false,
     lastX: 0,
     lastY: 0,
@@ -368,7 +368,7 @@ function SceneContent({
   }, [compact])
 
   const stemHome = useMemo<[number, number, number]>(
-    () => [0, compact ? 0.5 : 0.62, 0],
+    () => [0, compact ? 0.04 : 0.055, 0],
     [compact],
   )
 
@@ -437,7 +437,7 @@ function SceneContent({
       o.lastY = e.clientY
       sceneBridge.dragDistance += Math.abs(dx) + Math.abs(dy)
       o.targetAz -= dx * 0.006
-      o.targetEl = clamp(o.targetEl + dy * 0.0025, 0.26, 0.78)
+      o.targetEl = clamp(o.targetEl + dy * 0.0025, 0.02, 0.78)
     }
     const up = () => {
       const o = orbitRef.current
