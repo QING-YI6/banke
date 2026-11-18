@@ -869,23 +869,61 @@
 
   .setup {
     justify-content: flex-start;
-    padding-top: 16px;
-    padding-bottom: calc(96px + var(--safe-bottom));
+    padding-top: 0;
+    padding-bottom: calc(88px + var(--safe-bottom));
+  }
+
+  .setup__eyebrow {
+    margin-top: 2px;
   }
 
   .setup__question {
-    margin: 16px 0 6px;
+    margin: 12px 0 6px;
     font-size: clamp(24px, 7vw, 32px);
   }
 
   .setup__row {
     grid-template-columns: 1fr;
     gap: 8px;
-    margin-top: 22px;
+    margin-top: 20px;
   }
 
   .setup__row-label {
     padding-top: 0;
+  }
+
+  .chips {
+    width: 100%;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .chip {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    height: 44px;
+    padding: 0 2px;
+    font-size: 15px;
+  }
+
+  .chip--custom {
+    flex: 0 0 54px;
+    width: 54px;
+    min-width: 54px;
+    padding: 0 2px;
+    font-size: 11px;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .chip--custom span {
+    display: none;
+  }
+
+  .custom-duration {
+    width: 100%;
+    justify-content: center;
   }
 
   .seg__item {
@@ -894,14 +932,8 @@
     padding: 9px 12px;
   }
 
-  .chip {
-    width: 52px;
-    height: 44px;
-    font-size: 16px;
-  }
-
   .setup__actions {
-    margin-top: 28px;
+    margin-top: 24px;
   }
 
   .setup__actions .btn {
@@ -914,7 +946,7 @@
   }
 
   .setup__tip {
-    margin-top: 22px;
+    margin-top: 16px;
     font-size: 9px;
   }
 
