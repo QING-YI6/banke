@@ -52,6 +52,28 @@
   color: var(--paper-28);
 }
 
+.focus-shell .focus__task {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  max-width: min(72vw, 560px);
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  color: var(--paper-55);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  pointer-events: none;
+}
+
 .focus-shell .icon-btn {
   border-color: var(--line);
   color: var(--paper-70);

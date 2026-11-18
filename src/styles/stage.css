@@ -263,10 +263,21 @@
 }
 
 .stem-label__text {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(-4px);
   font-size: 9px;
   letter-spacing: 0.18em;
   white-space: nowrap;
   text-shadow: 0 1px 10px rgba(255, 255, 255, 0.95);
+  transition: max-width 0.4s var(--ease), opacity 0.3s var(--ease), transform 0.4s var(--ease);
+}
+
+.stem-label.is-open .stem-label__text {
+  max-width: 130px;
+  opacity: 1;
+  transform: none;
 }
 
 .stem-label:hover {
@@ -623,8 +634,8 @@
     padding: 6px;
   }
 
-  .stem-label__text {
-    display: none;
+  .stem-label.is-open .stem-label__text {
+    max-width: 110px;
   }
 
   .stem-label__mark {

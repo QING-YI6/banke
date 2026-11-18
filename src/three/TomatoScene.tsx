@@ -33,6 +33,7 @@ interface TomatoSceneProps {
   onSelect: (q: Quadrant) => void
   onOpenStem: () => void
   onPhase: (phase: ScenePhase) => void
+  onLifted: (lifted: boolean) => void
 }
 
 interface OrbitState {
@@ -242,6 +243,7 @@ function SceneContent({
   onSelect,
   onOpenStem,
   onPhase,
+  onLifted,
 }: TomatoSceneProps) {
   const { size, gl } = useThree()
   const rootRef = useRef<THREE.Group>(null!)
@@ -278,6 +280,7 @@ function SceneContent({
   const stemLanded = useRef(false)
   const fired = useRef({ ripple: false })
   const lastActive = useRef(selected)
+  const liftedRef = useRef(false)
 
   selectedRef.current = selected
 
@@ -437,7 +440,7 @@ function SceneContent({
       o.lastY = e.clientY
       sceneBridge.dragDistance += Math.abs(dx) + Math.abs(dy)
       o.targetAz -= dx * 0.006
-      o.targetEl = clamp(o.targetEl + dy * 0.0025, 0.02, 0.78)
+      o.targetEl = clamp(o.targetEl - dy * 0.0025, 0.02, 0.78)
     }
     const up = () => {
       const o = orbitRef.current
@@ -558,6 +561,11 @@ function SceneContent({
       if (idx !== lastActive.current) {
         lastActive.current = idx
         onSelected(idx)
+      }
+      const lifted = o.el > 0.3
+      if (lifted !== liftedRef.current) {
+        liftedRef.current = lifted
+        onLifted(lifted)
       }
     }
 

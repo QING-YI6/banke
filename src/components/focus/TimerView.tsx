@@ -101,6 +101,10 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
         </div>
       </header>
 
+      <div className="focus__task" title={active.label}>
+        {active.isBreak ? '把眼睛从屏幕上移开' : active.label || '只做这一件事'}
+      </div>
+
       <main className={`timer${paused ? ' is-paused' : ''}`}>
         <div className="timer__meta">
           <span>{active.isBreak ? '让水面替你数' : active.mode === 'countdown' ? `限时 · ${Math.round((target ?? 0) / 60)} 分钟` : '不限时 · 只往上数'}</span>
@@ -126,10 +130,6 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
           </div>
           {paused && <div className="timer__paused">停在这一刻</div>}
         </TimerDial>
-
-        <div className="timer__label" title={active.label}>
-          {active.isBreak ? '把眼睛从屏幕上移开' : active.label}
-        </div>
 
         <div className="timer__actions">
           <button className="btn btn--primary" onClick={toggleTimer}>

@@ -55,6 +55,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
   const [skip, setSkip] = useState(initialSettled || !webgl || forceSkip)
   const [leaving, setLeaving] = useState<Quadrant | null>(null)
   const [selected, setSelected] = useState(0)
+  const [stemOpen, setStemOpen] = useState(false)
   const labelsRef = useRef<HTMLDivElement>(null)
   const settledOnce = useRef(initialSettled || !webgl || forceSkip)
 
@@ -145,6 +146,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
             onSelect={enter}
             onOpenStem={onOpenStem}
             onPhase={setPhase}
+            onLifted={setStemOpen}
           />
         </Canvas>
       ) : (
@@ -215,7 +217,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           </button>
 
           <button
-            className="stem-label"
+            className={`stem-label${stemOpen ? ' is-open' : ''}`}
             data-anchor="stem"
             data-offset={coarse ? -24 : -34}
             data-x={coarse ? -84 : -150}
