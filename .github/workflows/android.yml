@@ -34,10 +34,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 安装 SDK 组件
+      - name: 安装 Android SDK 组件
         run: |
           yes | sdkmanager --licenses > /dev/null
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"

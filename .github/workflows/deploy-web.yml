@@ -1,8 +1,7 @@
 name: deploy-web
 
 on:
-  push:
-    branches: [main, master]
+  # 私有仓库默认没有 Pages；需要时在仓库 Settings → Pages 里启用后再手动运行。
   workflow_dispatch:
 
 permissions:
