@@ -53,6 +53,48 @@ export function makeSkinGeometry(a0: number, a1: number, radius = 1): THREE.Buff
 }
 
 /**
+ * 没切之前的整颗外皮：一整张连续曲面，没有四瓣拼接的接缝。
+ */
+export function makeWholeSkinGeometry(radius = 1, segA = 108, segT = 52): THREE.BufferGeometry {
+  const pos: number[] = []
+  const nor: number[] = []
+  const uv: number[] = []
+  const idx: number[] = []
+
+  for (let i = 0; i <= segA; i++) {
+    const a = (Math.PI * 2 * i) / segA
+    for (let j = 0; j <= segT; j++) {
+      const th = (Math.PI * j) / segT
+      const r = radius * lobe(a, th)
+      const st = Math.sin(th)
+      const x = st * Math.cos(a) * r
+      const y = Math.cos(th) * r * TOMATO_SQUASH
+      const z = st * Math.sin(a) * r
+      pos.push(x, y, z)
+      const sq = TOMATO_SQUASH * TOMATO_SQUASH
+      const len = Math.hypot(x, y / sq, z) || 1
+      nor.push(x / len, y / sq / len, z / len)
+      uv.push(i / segA, 1 - j / segT)
+    }
+  }
+
+  for (let i = 0; i < segA; i++) {
+    for (let j = 0; j < segT; j++) {
+      const a = i * (segT + 1) + j
+      const b = a + segT + 1
+      idx.push(a, b, a + 1, b, b + 1, a + 1)
+    }
+  }
+
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  return g
+}
+
+/**
  * 切面：半个圆盘，直边是番茄中轴。
  * UV 正好落在横截面贴图的右半圆上，能完整露出籽腔。
  */

@@ -6,7 +6,7 @@ import { QUADRANTS, type Quadrant } from '../core/types'
 import { clamp } from '../core/time'
 import { sound } from '../core/sound'
 import { fleshTexture, glowTexture, skinTexture } from './textures'
-import { makeCapGeometry, makeSkinGeometry } from './geometry'
+import { makeCapGeometry, makeSkinGeometry, makeWholeSkinGeometry } from './geometry'
 import { PALETTE } from './palette'
 import { sceneBridge, waterFx, type SplashSpec } from './bridge'
 import { PoolFloor, Water } from './Water'
@@ -15,8 +15,15 @@ import { StemModel } from './StemModel'
 
 export type ScenePhase = 'idle' | 'cutting' | 'opening' | 'settled'
 
-const CENTER_Y = 1.6
-const STEM_TOP = 2.52
+const CENTER_Y = 0.9
+const STEM_TOP = 1.82
+const FINAL_Y = 0.045
+const CUT_A = 2.0
+const CUT_B = 2.4
+const SPLIT_AT = 2.6
+const FALL_DURATION = 1.12
+const CAM_START = 4.6
+const CAM_DURATION = 1.6
 
 interface TomatoSceneProps {
   skipIntro: boolean
@@ -29,14 +36,18 @@ interface TomatoSceneProps {
   onPhase: (phase: ScenePhase) => void
 }
 
-function easeOutCubic(x: number): number {
-  return 1 - Math.pow(1 - x, 3)
+interface OrbitState {
+  az: number
+  targetAz: number
+  el: number
+  targetEl: number
+  dragging: boolean
+  lastX: number
+  lastY: number
 }
 
-function easeOutBack(x: number): number {
-  const c1 = 1.18
-  const c3 = c1 + 1
-  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2)
+function easeOutCubic(x: number): number {
+  return 1 - Math.pow(1 - x, 3)
 }
 
 function smoothstep(x: number): number {
@@ -44,7 +55,6 @@ function smoothstep(x: number): number {
   return t * t * (3 - 2 * t)
 }
 
-/** 白天的水面：接近白、带一点蓝，亮而透。 */
 function SkyDome() {
   return (
     <mesh frustumCulled={false} renderOrder={-10}>
@@ -99,14 +109,51 @@ function EnvironmentSetup() {
   return null
 }
 
-function Motes({ count = 70 }: { count?: number }) {
+interface RingSpec {
+  at: number
+  position: [number, number, number]
+}
+
+function LandRing({ spec, timeRef }: { spec: RingSpec; timeRef: React.MutableRefObject<number> }) {
+  const ref = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    const t = timeRef.current - spec.at
+    const life = 1.15
+    if (t < 0 || t > life) {
+      mesh.visible = false
+      return
+    }
+    mesh.visible = true
+    const k = t / life
+    const s = 0.24 + k * 1.55
+    mesh.scale.set(s, s, 1)
+    const mat = mesh.material as THREE.MeshBasicMaterial
+    mat.opacity = (1 - k) * 0.65
+  })
+  return (
+    <mesh
+      ref={ref}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={spec.position}
+      visible={false}
+      renderOrder={4}
+    >
+      <ringGeometry args={[0.68, 0.82, 64]} />
+      <meshBasicMaterial color="#f2fdff" transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
+function Motes({ count = 60 }: { count?: number }) {
   const ref = useRef<THREE.Points>(null)
   const geometry = useMemo(() => {
     const pos = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 11
-      pos[i * 3 + 1] = 0.4 + Math.random() * 3.2
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 8
+      pos[i * 3] = (Math.random() - 0.5) * 10
+      pos[i * 3 + 1] = 0.3 + Math.random() * 2.5
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 7
     }
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
@@ -116,56 +163,62 @@ function Motes({ count = 70 }: { count?: number }) {
   useFrame(({ clock }) => {
     if (!ref.current) return
     const t = clock.elapsedTime
-    ref.current.rotation.y = t * 0.01
-    ref.current.position.y = Math.sin(t * 0.2) * 0.05
+    ref.current.rotation.y = t * 0.008
+    ref.current.position.y = Math.sin(t * 0.18) * 0.04
   })
 
   return (
     <points ref={ref} geometry={geometry} frustumCulled={false}>
-      <pointsMaterial
-        color="#ffffff"
-        size={0.02}
-        transparent
-        opacity={0.55}
-        depthWrite={false}
-        sizeAttenuation
-      />
+      <pointsMaterial color="#ffffff" size={0.02} transparent opacity={0.4} depthWrite={false} sizeAttenuation />
     </points>
   )
 }
 
-interface WedgeTarget {
-  p: THREE.Vector3
-  rot: [number, number, number]
+interface PieceFinal {
+  position: THREE.Vector3
+  quaternion: THREE.Quaternion
   scale: number
-  gap: number
+  theta: number
+  outward: THREE.Vector3
 }
 
-const FACE_YAW = [-0.78 + Math.PI, -0.79, -2.36, 0.79]
+/** 让一块番茄的切面朝上、半圆向外，像西瓜一样平躺在水面上。 */
+function flatQuaternion(a: number, R: THREE.Vector3): THREE.Quaternion {
+  const up = new THREE.Vector3(0, 1, 0)
+  // 这一面的“朝外”法线。映射到 +Y 后，果肉朝上、皮和果身压在水里。
+  const n = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).normalize()
+  const p = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).normalize()
+  const local = new THREE.Matrix4().makeBasis(p, n, new THREE.Vector3().crossVectors(p, n).normalize())
+  const world = new THREE.Matrix4().makeBasis(R, up, new THREE.Vector3().crossVectors(R, up).normalize())
+  const m = world.multiply(local.transpose())
+  return new THREE.Quaternion().setFromRotationMatrix(m)
+}
 
 function CameraRig({
   camMixRef,
+  orbitRef,
   entering,
 }: {
   camMixRef: React.MutableRefObject<number>
+  orbitRef: React.MutableRefObject<OrbitState>
   entering: Quadrant | null
 }) {
   const { camera, size } = useThree()
 
-  useFrame(({ clock }, dt) => {
+  useFrame((_, dt) => {
     const mix = clamp(camMixRef.current, 0, 1)
     const portrait = size.width / size.height < 1.0
-    const startR = portrait ? 6.4 : 5.5
-    const endR = portrait ? 9.6 : 7.7
-    let r = startR + (endR - startR) * mix
-    if (entering) r = Math.max(3.2, r - dt * 9)
+    const r0 = portrait ? 7.8 : 5.1
+    const r1 = portrait ? 7.2 : 4.1
+    let r = r0 + (r1 - r0) * mix
+    if (entering) r = Math.max(2.6, r - dt * 8)
 
-    const phiStart = 1.17
-    const phiEnd = 0.23
-    const phi = phiStart + (phiEnd - phiStart) * mix
-    const targetY = 1.56
-    const t = clock.elapsedTime
-    const az = Math.sin(t * 0.09) * 0.018 * mix
+    const phi0 = 1.38
+    const phi1 = portrait ? 0.3 : 0.26
+    const orbit = orbitRef.current
+    const phi = phi0 + (phi1 - phi0) * mix + (orbit.el - phi1) * smoothstep((mix - 0.75) / 0.25)
+    const az = orbit.az * smoothstep((mix - 0.75) / 0.25)
+    const targetY = CENTER_Y + ((portrait ? 0.38 : 0.34) - CENTER_Y) * mix
 
     camera.position.set(
       Math.sin(az) * Math.cos(phi) * r,
@@ -190,26 +243,39 @@ function SceneContent({
 }: TomatoSceneProps) {
   const { size, gl } = useThree()
   const rootRef = useRef<THREE.Group>(null!)
+  const wholeRef = useRef<THREE.Mesh>(null)
   const wedgeRefs = useRef<(THREE.Group | null)[]>([])
   const anchorRefs = useRef<(THREE.Object3D | null)[]>([])
   const stemRef = useRef<THREE.Group>(null!)
   const stemAnchor = useRef<THREE.Object3D>(null)
   const shadowRefs = useRef<(THREE.Mesh | null)[]>([])
   const reflectionRefs = useRef<(THREE.Mesh | null)[]>([])
+  const skinMeshes = useRef<(THREE.Mesh | null)[]>([])
+  const capAMeshes = useRef<(THREE.Mesh | null)[]>([])
+  const capBMeshes = useRef<(THREE.Mesh | null)[]>([])
   const ringRef = useRef<THREE.Mesh>(null)
   const lineA = useRef<THREE.Mesh>(null)
   const lineB = useRef<THREE.Mesh>(null)
   const flashA = useRef<THREE.Sprite>(null)
   const flashB = useRef<THREE.Sprite>(null)
-  const openRef = useRef(skipIntro ? 1 : 0)
-  const camMixRef = useRef(skipIntro ? 1 : 0)
   const animTime = useRef(0)
+  const camMixRef = useRef(skipIntro ? 1 : 0)
+  const orbitRef = useRef<OrbitState>({
+    az: 0,
+    targetAz: 0,
+    el: 0.45,
+    targetEl: 0.45,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+  })
   const [phase, setPhase] = useState<ScenePhase>(skipIntro ? 'settled' : 'idle')
   const phaseRef = useRef(phase)
-  const [hovered, setHovered] = useState<number | null>(null)
-  const hoverRef = useRef<number | null>(null)
   const selectedRef = useRef(selected)
-  const fired = useRef({ rippleCut: false, rippleBurst: false, stemLand: false })
+  const landed = useRef([false, false, false, false])
+  const stemLanded = useRef(false)
+  const fired = useRef({ ripple: false })
+  const lastActive = useRef(selected)
 
   selectedRef.current = selected
 
@@ -250,12 +316,14 @@ function SceneContent({
     [fleshTex],
   )
 
+  const wholeSkin = useMemo(() => makeWholeSkinGeometry(), [])
+
   const quarters = useMemo(() => {
-    // 切之前必须是一颗完整的番茄，所以接缝为 0。
-    const gap = 0
+    // 横切、竖切：四个象限的边界在 0 / 90 / 180 / 270 度，切面与坐标轴对齐。
+    const gap = -0.002
     return QUADRANTS.map((_, i) => {
-      const a0 = Math.PI / 4 + (i * Math.PI) / 2 + gap
-      const a1 = Math.PI / 4 + ((i + 1) * Math.PI) / 2 - gap
+      const a0 = (i * Math.PI) / 2 + gap
+      const a1 = ((i + 1) * Math.PI) / 2 - gap
       return {
         skin: makeSkinGeometry(a0, a1),
         capA: makeCapGeometry(a0),
@@ -271,37 +339,32 @@ function SceneContent({
         q.capA.dispose()
         q.capB.dispose()
       })
+      wholeSkin.dispose()
       skinMaterial.dispose()
       fleshMaterial.dispose()
     }
-  }, [quarters, skinMaterial, fleshMaterial])
+  }, [quarters, wholeSkin, skinMaterial, fleshMaterial])
 
   const compact = size.width / size.height < 1.02
-  const layout = useMemo<WedgeTarget[]>(() => {
+  const finals = useMemo<PieceFinal[]>(() => {
+    const scale = compact ? 0.46 : 0.55
+    const dist = compact ? 0.66 : 0.8
     return QUADRANTS.map((_, i) => {
-      let d = i - selected
-      if (d >= 2) d -= 4
-      if (d < -2) d += 4
-      const ad = Math.abs(d)
-      const x =
-        d === 0 ? 0 : ad === 2 ? 0 : Math.sign(d) * (compact ? 0.68 : 1.04)
-      const y = d === 0 ? 0.16 : ad === 2 ? (compact ? 0.38 : 0.62) : -0.02
-      const z = d === 0 ? 0.9 : ad === 2 ? (compact ? -1.25 : -1.0) : -0.12
-      const scale =
-        d === 0 ? (compact ? 0.66 : 0.82) : ad === 2 ? (compact ? 0.38 : 0.58) : compact ? 0.5 : 0.64
-      const yaw =
-        d === 0 ? FACE_YAW[i] : ad === 2 ? FACE_YAW[i] + Math.PI : FACE_YAW[i] - Math.sign(d) * 0.65
+      const theta = (i * Math.PI) / 2
+      const R = new THREE.Vector3(Math.sin(theta), 0, Math.cos(theta))
+      const a1 = ((i + 1) * Math.PI) / 2
       return {
-        p: new THREE.Vector3(x, y, z),
-        rot: [-0.05, yaw, d === 0 ? 0.02 : Math.sign(d) * 0.04],
+        position: new THREE.Vector3(R.x * dist, FINAL_Y - CENTER_Y, R.z * dist),
+        quaternion: flatQuaternion(a1, R),
         scale,
-        gap: d,
+        theta,
+        outward: R.clone(),
       }
     })
-  }, [selected, compact])
+  }, [compact])
 
   const stemHome = useMemo<[number, number, number]>(
-    () => [0, 0.05, compact ? 0.2 : 0.25],
+    () => [0, compact ? 0.12 : 0.15, 0],
     [compact],
   )
 
@@ -323,52 +386,64 @@ function SceneContent({
 
   useEffect(() => {
     if (skipIntro) {
-      openRef.current = 1
       camMixRef.current = 1
       if (phaseRef.current !== 'settled') {
         phaseRef.current = 'settled'
         setPhase('settled')
       }
+      landed.current = [true, true, true, true]
+      stemLanded.current = true
     }
   }, [skipIntro])
 
   useEffect(() => {
     if (phase === 'cutting') sound.cut()
-    if (phase === 'opening') sound.splash()
   }, [phase])
 
   useEffect(() => {
-    document.body.style.cursor = hovered !== null ? 'pointer' : ''
+    document.body.style.cursor = phase === 'settled' ? 'grab' : ''
     return () => {
       document.body.style.cursor = ''
     }
-  }, [hovered])
+  }, [phase])
 
-  // 左右拖动切换选中的一瓣。
+  // 360° 环视：拖动只转镜头，不做一瓣一瓣的自动切换。
   useEffect(() => {
     const el = gl.domElement
-    const drag = { down: false, lastX: 0, acc: 0 }
     const down = (e: PointerEvent) => {
-      drag.down = true
-      drag.lastX = e.clientX
-      drag.acc = 0
+      if (phaseRef.current !== 'settled') return
+      const o = orbitRef.current
+      o.dragging = true
+      o.lastX = e.clientX
+      o.lastY = e.clientY
       sceneBridge.dragDistance = 0
-    }
-    const move = (e: PointerEvent) => {
-      if (!drag.down) return
-      const dx = e.clientX - drag.lastX
-      drag.lastX = e.clientX
-      drag.acc += dx
-      sceneBridge.dragDistance += Math.abs(dx)
-      if (phaseRef.current === 'settled' && Math.abs(drag.acc) > 58) {
-        const dir = drag.acc < 0 ? 1 : -1
-        const next = (selectedRef.current + dir + 4) % 4
-        onSelected(next)
-        drag.acc = 0
+      document.body.style.cursor = 'grabbing'
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
       }
     }
+    const move = (e: PointerEvent) => {
+      const o = orbitRef.current
+      if (!o.dragging) return
+      const dx = e.clientX - o.lastX
+      const dy = e.clientY - o.lastY
+      o.lastX = e.clientX
+      o.lastY = e.clientY
+      sceneBridge.dragDistance += Math.abs(dx) + Math.abs(dy)
+      o.targetAz -= dx * 0.006
+      o.targetEl = clamp(o.targetEl + dy * 0.0025, 0.26, 0.78)
+    }
     const up = () => {
-      drag.down = false
+      const o = orbitRef.current
+      o.dragging = false
+      if (phaseRef.current === 'settled') document.body.style.cursor = 'grab'
+      try {
+        el.releasePointerCapture(0)
+      } catch {
+        /* ignore */
+      }
     }
     el.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
@@ -380,51 +455,80 @@ function SceneContent({
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
     }
-  }, [gl, onSelected])
+  }, [gl])
 
-  const splashSpecs = useMemo<SplashSpec[]>(
-    () => [
-      { id: 'mist', at: 2.8, origin: [0, CENTER_Y - 0.05, 0.35], count: 56, power: 1.0, color: '#ffae9c', size: 0.8 },
-      { id: 'water', at: 3.2, origin: [0, 0.03, 0.55], count: 90, power: 1.8, color: '#8ecde6', size: 1.0 },
-      { id: 'stem', at: 3.88, origin: [stemHome[0], 0.03, stemHome[2]], count: 70, power: 1.5, color: '#8ecde6', size: 0.95 },
-    ],
-    [stemHome],
-  )
+  const ringSpecs = useMemo<RingSpec[]>(() => {
+    const rings: RingSpec[] = finals.map((f, i) => ({
+      at: SPLIT_AT + i * 0.06 + FALL_DURATION + 0.02,
+      position: [f.position.x + f.outward.x * 0.32, 0.022, f.position.z + f.outward.z * 0.32],
+    }))
+    rings.push({ at: SPLIT_AT + 1.28, position: [0, 0.022, 0] })
+    return rings
+  }, [finals])
+
+  const splashSpecs = useMemo<SplashSpec[]>(() => {
+    const specs: SplashSpec[] = QUADRANTS.map((_, i) => {
+      const f = finals[i]
+      return {
+        id: `land-${i}`,
+        at: SPLIT_AT + i * 0.06 + FALL_DURATION + 0.03,
+        origin: [f.position.x + f.outward.x * 0.38, 0.03, f.position.z + f.outward.z * 0.38],
+        count: 110,
+        power: 3.0,
+        color: '#f4feff',
+        size: 1.5,
+      }
+    })
+    specs.push({
+      id: 'stem-land',
+      at: SPLIT_AT + 1.3,
+      origin: [0, 0.03, 0],
+      count: 60,
+      power: 1.6,
+      color: '#e8fcff',
+      size: 1.0,
+    })
+    return specs
+  }, [finals])
 
   const clickWedge = (i: number) => {
     if (sceneBridge.dragDistance > 10) return
     if (phaseRef.current !== 'settled') return
-    if (i === selectedRef.current) onSelect(QUADRANTS[i])
-    else onSelected(i)
+    onSelect(QUADRANTS[i])
   }
 
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
     animTime.current += Math.min(dt, 0.05)
     const e = animTime.current
+    const step = Math.min(dt, 0.05)
 
     if (!skipIntro) {
-      if (phaseRef.current === 'idle' && e > 2.0) {
+      if (phaseRef.current === 'idle' && e > CUT_A) {
         phaseRef.current = 'cutting'
         setPhase('cutting')
-      } else if (phaseRef.current === 'cutting' && e > 2.46) {
+      } else if (phaseRef.current === 'cutting' && e > SPLIT_AT) {
         phaseRef.current = 'opening'
         setPhase('opening')
       }
-      const rawOpen = clamp((e - 2.46) / 1.42, 0, 1)
-      openRef.current = rawOpen
-      camMixRef.current = smoothstep((e - 2.0) / 1.9)
+      const cam = smoothstep((e - CAM_START) / CAM_DURATION)
+      camMixRef.current = cam
+      if (cam > 0.995 && e > CAM_START + CAM_DURATION + 0.1 && phaseRef.current !== 'settled') {
+        phaseRef.current = 'settled'
+        setPhase('settled')
+        orbitRef.current.targetAz = 0
+      }
 
-      const cutA = clamp((e - 2.0) / 0.4, 0, 1)
-      const cutB = clamp((e - 2.38) / 0.4, 0, 1)
+      const cutA = clamp((e - CUT_A) / 0.4, 0, 1)
+      const cutB = clamp((e - CUT_B) / 0.4, 0, 1)
       if (lineA.current) {
         lineA.current.visible = cutA > 0 && cutA < 1
-        lineA.current.position.y = 3.02 - easeOutCubic(cutA) * 2.55
+        lineA.current.position.y = 2.25 - easeOutCubic(cutA) * 2.0
         ;(lineA.current.material as THREE.MeshBasicMaterial).opacity = Math.sin(cutA * Math.PI) * 0.9
       }
       if (lineB.current) {
         lineB.current.visible = cutB > 0 && cutB < 1
-        lineB.current.position.y = 3.02 - easeOutCubic(cutB) * 2.55
+        lineB.current.position.y = 2.25 - easeOutCubic(cutB) * 2.0
         ;(lineB.current.material as THREE.MeshBasicMaterial).opacity = Math.sin(cutB * Math.PI) * 0.9
       }
       const flash = (sprite: THREE.Sprite | null, at: number) => {
@@ -434,113 +538,123 @@ function SceneContent({
         sprite.scale.set(s, s, s)
         ;(sprite.material as THREE.SpriteMaterial).opacity = p > 0 && p < 1 ? (1 - p) * 0.45 : 0
       }
-      flash(flashA.current, 2.32)
-      flash(flashB.current, 2.7)
-
-      if (e > 2.72 && !fired.current.rippleCut) {
-        fired.current.rippleCut = true
-        waterFx.trigger(0, 0.55, t, 0.7)
-      }
-      if (e > 3.2 && !fired.current.rippleBurst) {
-        fired.current.rippleBurst = true
-        waterFx.trigger(0.1, 0.5, t, 1.15)
-      }
-      if (openRef.current > 0.995 && e > 3.9 && phaseRef.current !== 'settled') {
-        phaseRef.current = 'settled'
-        setPhase('settled')
-      }
+      flash(flashA.current, CUT_A + 0.3)
+      flash(flashB.current, CUT_B + 0.3)
     } else {
-      openRef.current = 1
       camMixRef.current = 1
+      orbitRef.current.az = orbitRef.current.targetAz
+      orbitRef.current.el = orbitRef.current.targetEl
     }
 
-    const raw = clamp(openRef.current, 0, 1)
-    const motion = 0.78 * raw + 0.22 * easeOutBack(raw)
-    const idle = 1 - raw
-    const damp = 1 - Math.exp(-Math.min(dt, 0.05) * 7)
+    if (phaseRef.current === 'settled') {
+      const o = orbitRef.current
+      o.az += (o.targetAz - o.az) * (1 - Math.exp(-step * 7))
+      o.el += (o.targetEl - o.el) * (1 - Math.exp(-step * 7))
+      const idx = ((Math.round(o.az / (Math.PI / 2)) % 4) + 4) % 4
+      if (idx !== lastActive.current) {
+        lastActive.current = idx
+        onSelected(idx)
+      }
+    }
+
+    const falling = skipIntro ? 1 : clamp((e - SPLIT_AT) / FALL_DURATION, 0, 1)
+    const idle = 1 - falling
 
     if (rootRef.current) {
-      rootRef.current.position.y = CENTER_Y + Math.sin(t * 1.0) * 0.022 * idle
-      rootRef.current.rotation.y = Math.sin(t * 0.42) * 0.06 * idle
-      rootRef.current.rotation.x = Math.sin(t * 0.7) * 0.015 * idle
+      rootRef.current.position.y = CENTER_Y + Math.sin(t * 1.2) * 0.006 * idle
     }
 
     for (let i = 0; i < 4; i++) {
       const g = wedgeRefs.current[i]
       if (!g) continue
-      const item = layout[i]
-      const isHover = hoverRef.current === i
-      const bob = Math.sin(t * 0.8 + i * 1.7) * 0.03 * raw
-      const desired = new THREE.Vector3(item.p.x * motion, item.p.y * motion + bob, item.p.z * motion)
-      if (raw >= 0.999) g.position.lerp(desired, damp)
-      else g.position.copy(desired)
+      const f = finals[i]
+      const delay = i * 0.055
+      const k = skipIntro ? 1 : clamp((e - SPLIT_AT - delay) / FALL_DURATION, 0, 1)
+      const spread = easeOutCubic(k)
+      const drop = k * k
+      const tip = smoothstep(clamp(k * 1.15, 0, 1))
+      const landBounce = k >= 1 ? Math.sin((e - SPLIT_AT - delay - FALL_DURATION) * 10) * 0.012 : 0
 
-      const targetRot = new THREE.Euler(
-        item.rot[0] * motion + Math.sin(t * 0.6 + i) * 0.01 * raw,
-        item.rot[1] * motion + Math.sin(raw * Math.PI) * (i % 2 === 0 ? 0.45 : -0.45),
-        item.rot[2] * motion + Math.sin(t * 0.7 + i * 0.9) * 0.018 * raw,
+      g.position.set(
+        f.position.x * spread,
+        f.position.y * drop + (k >= 1 ? Math.abs(landBounce) : 0),
+        f.position.z * spread,
       )
-      if (raw >= 0.999) {
-        g.rotation.x += (targetRot.x - g.rotation.x) * damp
-        g.rotation.y += (targetRot.y - g.rotation.y) * damp
-        g.rotation.z += (targetRot.z - g.rotation.z) * damp
-      } else {
-        g.rotation.copy(targetRot)
-      }
+      g.quaternion.copy(new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(), f.quaternion, tip))
+      const s = 1 + (f.scale - 1) * smoothstep(k)
+      const emphasis = phaseRef.current === 'settled' ? (i === selectedRef.current ? 1.04 : 0.94) : 1
+      g.scale.setScalar(s * emphasis)
 
-      const targetScale = (1 + (item.scale - 1) * clamp(raw, 0, 1)) * (isHover ? 1.045 : 1)
-      const current = g.scale.x
-      const s = raw >= 0.999 ? current + (targetScale - current) * damp : targetScale
-      g.scale.setScalar(s)
+      // 落定后只留朝上的切面：皮和果身沉在水下，看起来像平放的西瓜瓣。
+      const flat = skipIntro || k > 0.985
+      const skinMesh = skinMeshes.current[i]
+      const capA = capAMeshes.current[i]
+      const capB = capBMeshes.current[i]
+      if (skinMesh) skinMesh.visible = !flat
+      if (capA) capA.visible = !flat
+      if (capB) capB.visible = true
 
       const shadow = shadowRefs.current[i]
       if (shadow) {
-        shadow.position.set(item.p.x * motion, 0.016, item.p.z * motion)
-        const ss = 0.6 + 0.4 * raw
-        shadow.scale.set(ss, ss, ss)
-        ;(shadow.material as THREE.MeshBasicMaterial).opacity = 0.11 * raw
+        shadow.position.set(f.position.x * spread, 0.016, f.position.z * spread)
+        shadow.scale.setScalar(0.55 + 0.35 * k)
+        ;(shadow.material as THREE.MeshBasicMaterial).opacity = k > 0.5 ? 0.14 * k : 0
       }
-
       const reflection = reflectionRefs.current[i]
       if (reflection) {
-        const rs = item.scale / 0.7
-        reflection.position.set(item.p.x * motion, 0.014, item.p.z * motion + 0.16)
-        reflection.scale.set(1.25 * rs, 2.3 * rs, 1)
-        ;(reflection.material as THREE.MeshBasicMaterial).opacity =
-          (i === selected ? 0.3 : 0.14) * raw
+        reflection.position.set(f.position.x * spread, 0.014, f.position.z * spread)
+        reflection.scale.set(1.1, 1.7, 1)
+        ;(reflection.material as THREE.MeshBasicMaterial).opacity = k > 0.5 ? 0.1 * k : 0
+      }
+
+      const anchor = anchorRefs.current[i]
+      if (anchor) {
+        anchor.position.set(
+          f.position.x * spread + f.outward.x * 0.42 * spread,
+          CENTER_Y + f.position.y * drop + 0.12,
+          f.position.z * spread + f.outward.z * 0.42 * spread,
+        )
+      }
+
+      if (k >= 1 && !landed.current[i]) {
+        landed.current[i] = true
+        waterFx.trigger(f.position.x, f.position.z, t, 1.0)
       }
     }
 
-    const fr = skipIntro ? 1 : clamp((e - 2.72) / 1.1, 0, 1)
+    const stemK = skipIntro ? 1 : clamp((e - SPLIT_AT - 0.1) / 1.2, 0, 1)
     if (stemRef.current) {
-      const ease = fr * fr
+      const fe = stemK * stemK
       stemRef.current.position.set(
-        THREE.MathUtils.lerp(0, stemHome[0], ease),
-        THREE.MathUtils.lerp(STEM_TOP, stemHome[1], ease),
-        THREE.MathUtils.lerp(0, stemHome[2], ease),
+        THREE.MathUtils.lerp(0, stemHome[0], fe),
+        THREE.MathUtils.lerp(STEM_TOP, stemHome[1], fe),
+        THREE.MathUtils.lerp(0, stemHome[2], fe),
       )
-      stemRef.current.rotation.set(-1.6 * ease, 0.32 * ease, 0.26 * ease)
-      stemRef.current.scale.setScalar(compact ? 0.52 : 0.58)
-      if (fr >= 1) {
-        const rest = e - 3.82
-        stemRef.current.position.y = stemHome[1] + Math.sin(rest * 1.3) * 0.01
-        stemRef.current.rotation.z = 0.3 + Math.sin(rest * 0.9) * 0.03
+      stemRef.current.rotation.set(0, 0.55 * fe, -1.48 * fe)
+      stemRef.current.scale.setScalar(compact ? 0.46 : 0.55)
+      if (stemK >= 1) {
+        const rest = e - (SPLIT_AT + 1.3)
+        stemRef.current.position.y = stemHome[1] + Math.sin(rest * 1.3) * 0.008
+        stemRef.current.rotation.z = -1.48 + Math.sin(rest * 0.9) * 0.022
       }
     }
+    if (stemK >= 1 && !stemLanded.current) {
+      stemLanded.current = true
+      waterFx.trigger(0, 0, t, 1.1)
+      if (!fired.current.ripple) {
+        fired.current.ripple = true
+        sound.splash()
+      }
+    }
+
     if (ringRef.current) {
       const mat = ringRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = skipIntro || fr >= 1 ? 0.3 + Math.sin(t * 1.2) * 0.1 : 0
-      ringRef.current.rotation.z = t * 0.16
+      mat.opacity = stemK >= 1 ? 0.22 + Math.sin(t * 1.1) * 0.08 : 0
+      ringRef.current.rotation.z = t * 0.12
     }
 
-    if (fr >= 1 && !fired.current.stemLand) {
-      fired.current.stemLand = true
-      waterFx.trigger(stemHome[0], stemHome[2], t, 1.2)
-      sound.splash()
-    }
-
-    if (flashA.current) flashA.current.position.set(0, CENTER_Y + 0.1, 0.3)
-    if (flashB.current) flashB.current.position.set(0, CENTER_Y + 0.1, 0.3)
+    if (flashA.current) flashA.current.position.set(0, CENTER_Y, 0)
+    if (flashB.current) flashB.current.position.set(0, CENTER_Y, 0)
   })
 
   const pixelRatio = Math.min(gl.getPixelRatio(), 2)
@@ -556,12 +670,22 @@ function SceneContent({
       <PoolFloor />
       <Water intensity={waterIntensity} />
       <Motes />
-      <CameraRig camMixRef={camMixRef} entering={entering} />
+      {QUADRANTS.map((q, i) => (
+        <object3D
+          key={`anchor-${q}`}
+          ref={(el) => {
+            anchorRefs.current[i] = el
+          }}
+        />
+      ))}
+      <CameraRig camMixRef={camMixRef} orbitRef={orbitRef} entering={entering} />
 
       <group ref={rootRef} position={[0, CENTER_Y, 0]}>
+        <mesh ref={wholeRef} geometry={wholeSkin} material={skinMaterial} visible={phase === 'idle'} />
         {quarters.map((q, i) => (
           <group
             key={QUADRANTS[i]}
+            visible={phase !== 'idle'}
             ref={(el) => {
               wedgeRefs.current[i] = el
             }}
@@ -571,58 +695,63 @@ function SceneContent({
             }}
             onPointerOver={(ev) => {
               ev.stopPropagation()
-              hoverRef.current = i
-              setHovered(i)
+              if (phaseRef.current === 'settled') document.body.style.cursor = 'pointer'
             }}
             onPointerOut={() => {
-              hoverRef.current = null
-              setHovered(null)
+              if (phaseRef.current === 'settled') document.body.style.cursor = 'grab'
             }}
           >
-            <mesh geometry={q.skin} material={skinMaterial} />
-            <mesh geometry={q.capA} material={fleshMaterial} />
-            <mesh geometry={q.capB} material={fleshMaterial} />
-            <object3D
-              position={[0, 0.86, 0]}
+            <mesh
+              geometry={q.skin}
+              material={skinMaterial}
               ref={(el) => {
-                anchorRefs.current[i] = el
+                skinMeshes.current[i] = el
+              }}
+            />
+            <mesh
+              geometry={q.capA}
+              material={fleshMaterial}
+              ref={(el) => {
+                capAMeshes.current[i] = el
+              }}
+            />
+            <mesh
+              geometry={q.capB}
+              material={fleshMaterial}
+              ref={(el) => {
+                capBMeshes.current[i] = el
               }}
             />
           </group>
         ))}
       </group>
 
-      {layout.map((item, i) => (
+      {finals.map((f, i) => (
         <mesh
           key={`shadow-${i}`}
           ref={(el) => {
             shadowRefs.current[i] = el
           }}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[item.p.x, 0.016, item.p.z]}
+          position={[f.position.x, 0.016, f.position.z]}
         >
-          <circleGeometry args={[0.68, 36]} />
+          <circleGeometry args={[0.56, 36]} />
           <meshBasicMaterial map={glowTex} color="#7fa5b4" transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0.2]}>
-        <circleGeometry args={[1.55, 48]} />
-        <meshBasicMaterial map={glowTex} color="#7fa5b4" transparent opacity={0.16} depthWrite={false} />
-      </mesh>
-
-      {layout.map((item, i) => (
+      {finals.map((f, i) => (
         <mesh
           key={`reflection-${i}`}
           ref={(el) => {
             reflectionRefs.current[i] = el
           }}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[item.p.x, 0.014, item.p.z + 0.16]}
+          position={[f.position.x, 0.014, f.position.z]}
           renderOrder={1}
         >
           <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial map={glowTex} color="#b04a38" transparent opacity={0} depthWrite={false} />
+          <meshBasicMaterial map={glowTex} color="#c4634d" transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
 
@@ -637,7 +766,7 @@ function SceneContent({
           document.body.style.cursor = 'pointer'
         }}
         onPointerOut={() => {
-          document.body.style.cursor = ''
+          if (phaseRef.current === 'settled') document.body.style.cursor = 'grab'
         }}
       >
         <StemModel />
@@ -645,33 +774,27 @@ function SceneContent({
           <sphereGeometry args={[0.44, 16, 16]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
-        <object3D ref={stemAnchor} position={[0, 0.24, 0]} />
+        <object3D ref={stemAnchor} position={[0, 0.3, 0]} />
       </group>
 
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[stemHome[0], 0.018, stemHome[2]]}>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[stemHome[0], 0.02, stemHome[2]]}>
         <ringGeometry args={[0.3, 0.32, 64]} />
-        <meshBasicMaterial
-          color={PALETTE.gold}
-          transparent
-          opacity={0}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
+        <meshBasicMaterial color={PALETTE.gold} transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
-      <mesh ref={lineA} rotation={[0, -Math.PI / 4, 0]} visible={false} renderOrder={20}>
+      <mesh ref={lineA} rotation={[0, 0, 0]} visible={false} renderOrder={20}>
         <boxGeometry args={[2.6, 0.014, 0.014]} />
         <meshBasicMaterial color="#ff6a4d" transparent opacity={0} depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
-      <mesh ref={lineB} rotation={[0, Math.PI / 4, 0]} visible={false} renderOrder={20}>
+      <mesh ref={lineB} rotation={[0, Math.PI / 2, 0]} visible={false} renderOrder={20}>
         <boxGeometry args={[2.6, 0.014, 0.014]} />
         <meshBasicMaterial color="#ff6a4d" transparent opacity={0} depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
 
-      <sprite ref={flashA} position={[0, CENTER_Y + 0.1, 0.3]} scale={0}>
+      <sprite ref={flashA} position={[0, CENTER_Y, 0]} scale={0}>
         <spriteMaterial map={glowTex} color="#ffb4a0" transparent opacity={0} depthWrite={false} toneMapped={false} />
       </sprite>
-      <sprite ref={flashB} position={[0, CENTER_Y + 0.1, 0.3]} scale={0}>
+      <sprite ref={flashB} position={[0, CENTER_Y, 0]} scale={0}>
         <spriteMaterial map={glowTex} color="#ffb4a0" transparent opacity={0} depthWrite={false} toneMapped={false} />
       </sprite>
 
@@ -679,6 +802,8 @@ function SceneContent({
         splashSpecs.map((spec) => (
           <Splash key={spec.id} spec={spec} pixelRatio={pixelRatio} timeRef={animTime} />
         ))}
+
+      {!skipIntro && ringSpecs.map((spec, i) => <LandRing key={`ring-${i}`} spec={spec} timeRef={animTime} />)}
 
       <Bridge />
     </>

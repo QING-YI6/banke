@@ -104,21 +104,10 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
     window.setTimeout(() => onEnter(q), 560)
   }
 
-  const cycle = (dir: number) => {
-    if (phase !== 'settled' || leaving) return
-    setSelected((s) => (s + dir + 4) % 4)
-  }
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (phase !== 'settled' || leaving) return
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        cycle(1)
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        cycle(-1)
-      } else if (e.key === 'Enter') {
+      if (e.key === 'Enter') {
         e.preventDefault()
         enter(activeQ)
       }
@@ -214,7 +203,7 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
             key={activeQ}
             className="slice-label is-active"
             data-anchor={activeQ}
-            data-offset={coarse ? -100 : -132}
+            data-offset={coarse ? -16 : -22}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => enter(activeQ)}
             style={{ '--accent': activeInfo.accent } as CSSProperties}
@@ -228,8 +217,8 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
           <button
             className="stem-label"
             data-anchor="stem"
-            data-offset={coarse ? -34 : -42}
-            data-x={coarse ? -62 : -104}
+            data-offset={coarse ? -24 : -34}
+            data-x={coarse ? -84 : -150}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={onOpenStem}
           >
@@ -239,28 +228,14 @@ export function WaterStage({ initialSettled, active, onEnter, onOpenStem, onSett
         </div>
       )}
 
-      {webgl && phase === 'settled' && !leaving && !(active && active.phase !== 'done') && (
-        <div className="carousel-nav" aria-label="切换这一瓣">
-          <button onClick={() => cycle(-1)} aria-label="上一瓣">
-            ‹
-          </button>
-          <span>
-            <em>{activeInfo.numeral}</em> / 04
-          </span>
-          <button onClick={() => cycle(1)} aria-label="下一瓣">
-            ›
-          </button>
-        </div>
-      )}
-
       <div className="stage__bottom">
         {phase === 'settled' ? (
           <p className="stage__hint">
             {webgl ? (
               <>
-                <span>左右拖动 · 换一瓣</span>
+                <span>拖动 · 360° 环视</span>
                 <span className="stage__hint-dot" />
-                <span>点名字 · 进去</span>
+                <span>点一瓣 · 进去</span>
               </>
             ) : (
               <span>选一瓣，落下这一刻</span>
