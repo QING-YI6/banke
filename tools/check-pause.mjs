@@ -44,5 +44,9 @@ const info = await page.evaluate(() => {
     paused: rect('.timer__paused'),
   }
 })
-console.log(JSON.stringify(info, null, 2))
+await page.evaluate(() => document.querySelector('.timer__actions .btn--ghost')?.click())
+await sleep(500)
+await page.screenshot({ path: path.join(root, 'tools/shots/confirm-short.png') })
+const dialogText = await page.$eval('.confirm__panel p', (el) => el.textContent)
+console.log(JSON.stringify({ info, dialogText }))
 await browser.close()

@@ -53,6 +53,9 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
     target !== null ? Math.min(1, totalElapsed / target) : (totalElapsed % 3600) / 3600
   const canToggle = target !== null
   const paused = active.phase === 'paused'
+  // 和 store 的入账规则保持一致：限时看计划与实际，不限时看实际。
+  const willRecord =
+    Math.round(totalElapsed) > 180 && (active.mode === 'countup' || (target ?? 0) > 180)
 
   const toggleDisplay = () => {
     if (!canToggle) return
@@ -152,7 +155,9 @@ export function TimerView({ active, onExit, onOpenPanel }: Props) {
             <p>
               {active.isBreak
                 ? '休息少一点也没关系。'
-                : `已经专注 ${formatClock(totalElapsed)}，现在结束也会记进本子里。`}
+                : willRecord
+                  ? `已经专注 ${formatClock(totalElapsed)}，现在结束也会记进本子里。`
+                  : `已经专注 ${formatClock(totalElapsed)}。不到三分钟的一瓣不进记录，只算这一次专注。`}
             </p>
             <div className="confirm__actions">
               <button className="btn btn--primary" onClick={doEnd}>
